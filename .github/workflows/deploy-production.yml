@@ -1,0 +1,52 @@
+name: Deploy Production
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'backend/**'
+  workflow_dispatch:  # Permette avvio manuale da GitHub UI
+
+jobs:
+  deploy:
+    name: Deploy to VPS
+    runs-on: ubuntu-latest
+    environment: production  # Richiede approvazione manuale in GitHub
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Deploy via SSH
+        uses: appleboy/ssh-action@v1
+        with:
+          host: ${{ secrets.VPS_HOST }}
+          username: ${{ secrets.VPS_USER }}
+          key: ${{ secrets.VPS_SSH_KEY }}
+          script: |
+            set -e
+            echo "→ Pull ultimo codice"
+            cd /opt/homematrix
+            sudo -u homematrix git pull origin main
+
+            echo "→ Aggiorna dipendenze"
+            sudo -u homematrix venv/bin/pip install -r backend/requirements.txt -q
+
+            echo "→ Esegui migrazioni DB"
+            cd backend
+            sudo -u homematrix ../venv/bin/alembic upgrade head
+
+            echo "→ Riavvia servizio"
+            systemctl restart homematrix
+
+            echo "→ Verifica stato"
+            sleep 3
+            systemctl is-active --quiet homematrix && echo "✓ Servizio attivo" || exit 1
+
+      - name: Notify success
+        if: success()
+        run: echo "Deploy completato con successo su produzione"
+
+      - name: Notify failure
+        if: failure()
+        run: echo "::error::Deploy fallito — controllare i log del VPS"

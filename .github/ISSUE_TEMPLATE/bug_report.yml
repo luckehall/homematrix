@@ -1,0 +1,54 @@
+name: 🐛 Bug Report
+description: Segnala un comportamento inatteso
+labels: ["bug", "triage"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Grazie per la segnalazione. Compila tutti i campi per velocizzare la risoluzione.
+
+  - type: dropdown
+    id: component
+    attributes:
+      label: Componente
+      options:
+        - Backend (FastAPI)
+        - Auth / Login
+        - Proxy Home Assistant
+        - Frontend / UI
+        - CI/CD
+        - Altro
+    validations:
+      required: true
+
+  - type: textarea
+    id: description
+    attributes:
+      label: Descrizione del problema
+      placeholder: Cosa succede? Cosa ti aspettavi che succedesse?
+    validations:
+      required: true
+
+  - type: textarea
+    id: steps
+    attributes:
+      label: Passi per riprodurre
+      placeholder: |
+        1. Vai a...
+        2. Clicca su...
+        3. Vedi errore...
+    validations:
+      required: true
+
+  - type: textarea
+    id: logs
+    attributes:
+      label: Log / Traceback
+      render: shell
+      placeholder: Incolla qui i log rilevanti
+
+  - type: input
+    id: version
+    attributes:
+      label: Versione / Commit
+      placeholder: es. main@abc1234
