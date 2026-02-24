@@ -36,8 +36,6 @@ export default function Dashboard() {
 
   const callService = async (domain, service, entity_id) => {
     await api.post(`/api/hosts/${selectedHost.id}/services/${domain}/${service}`, { entity_id })
-    const r = await api.get(`/api/hosts/${selectedHost.id}/states`)
-    setStates(r.data)
   }
 
   const domains = ['all', ...new Set(states.map(s => s.entity_id.split('.')[0]))]
