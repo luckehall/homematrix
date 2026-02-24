@@ -158,11 +158,15 @@ function DeviceCard({ state, onToggle }) {
     }
   }
 
+  const hasToggle = ['switch','light','input_boolean','cover','fan','media_player','climate'].includes(domain)
+  const isButton = domain === 'button'
+
   return (
-    <div className={`device-card ${isOn ? 'on' : ''}`} onClick={toggle}>
+    <div className={`device-card ${isOn ? 'on' : ''} ${isButton ? 'btn-device' : ''}`} onClick={toggle}>
       <div className="device-top">
         <div className="device-icon-wrap">{domainIcon(domain)}</div>
-        <div className={`toggle ${isOn ? 'on' : ''}`} />
+        {hasToggle && <div className={`toggle ${isOn ? 'on' : ''}`} />}
+        {isButton && <div className="btn-press">▶ Press</div>}
       </div>
       <div className="device-name">{name}</div>
       <div className="device-room">{domain}</div>

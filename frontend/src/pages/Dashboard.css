@@ -80,3 +80,5 @@ body { background:var(--bg); color:var(--text); font-family:'Syne',sans-serif; }
 .sensor-icon { font-size:22px; margin-bottom:6px; }
 .sensor-value { font-size:22px; font-weight:800; }
 .sensor-unit { font-size:12px; font-weight:400; color:var(--muted); margin-left:2px; }
+.btn-press { font-size:11px; color:var(--accent); background:rgba(0,229,192,.1); border:1px solid rgba(0,229,192,.2); border-radius:8px; padding:4px 10px; font-family:'DM Mono',monospace; }
+.btn-device:hover .btn-press { background:rgba(0,229,192,.2); }
