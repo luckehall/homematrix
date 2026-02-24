@@ -9,6 +9,7 @@ from app.db import get_db
 from app.models import User, UserStatus, HAHost, Role, UserRole, RolePermission
 from app.auth.router import require_admin
 from app.auth.service import hash_password
+from app.crypto import encrypt, decrypt
 
 router = APIRouter()
 
@@ -90,8 +91,15 @@ async def reset_password(user_id: str, data: ResetPasswordRequest,
     if not user:
         raise HTTPException(404, "Utente non trovato")
     user.hashed_password = hash_password(data.new_password)
+    # Revoca tutte le sessioni attive
+    sessions_result = await db.execute(
+        select(__import__('app.models', fromlist=['Session']).Session).where(
+            __import__('app.models', fromlist=['Session']).Session.user_id == user.id,
+            __import__('app.models', fromlist=['Session']).Session.revoked == False))
+    for s in sessions_result.scalars().all():
+        s.revoked = True
     await db.commit()
-    return {"message": f"Password di {user.email} aggiornata"}
+    return {"message": f"Password di {user.email} aggiornata, sessioni revocate"}
 
 @router.post("/users/{user_id}/make-admin")
 async def make_admin(user_id: str, db: AsyncSession = Depends(get_db),
@@ -103,8 +111,35 @@ async def make_admin(user_id: str, db: AsyncSession = Depends(get_db),
     await db.commit()
     return {"message": f"{user.email} è ora amministratore"}
 
+@router.get("/users/{user_id}/roles")
+async def get_user_roles(user_id: str, db: AsyncSession = Depends(get_db),
+                         admin: User = Depends(require_admin)):
+    result = await db.execute(
+        select(UserRole).where(UserRole.user_id == user_id))
+    user_roles = result.scalars().all()
+    out = []
+    for ur in user_roles:
+        role = await db.get(Role, ur.role_id)
+        if role:
+            out.append({"assignment_id": str(ur.id), "role_id": str(role.id), "role_name": role.name})
+    return out
+
+@router.delete("/users/{user_id}/roles/{role_id}")
+async def remove_user_role(user_id: str, role_id: str,
+                           db: AsyncSession = Depends(get_db),
+                           admin: User = Depends(require_admin)):
+    result = await db.execute(
+        select(UserRole).where(UserRole.user_id == user_id,
+                               UserRole.role_id == role_id))
+    ur = result.scalar_one_or_none()
+    if not ur:
+        raise HTTPException(404, "Assegnazione non trovata")
+    await db.delete(ur)
+    await db.commit()
+    return {"message": "Ruolo rimosso"}
+
 # ══════════════════════════════════════════
-# HOST HA
+# HOST HA — token cifrati, mai esposti
 # ══════════════════════════════════════════
 
 class HAHostCreate(BaseModel):
@@ -118,6 +153,7 @@ async def list_hosts(db: AsyncSession = Depends(get_db),
                      admin: User = Depends(require_admin)):
     result = await db.execute(select(HAHost))
     hosts = result.scalars().all()
+    # token NON incluso nella risposta
     return [{"id": str(h.id), "name": h.name, "base_url": h.base_url,
              "description": h.description, "active": h.active,
              "created_at": h.created_at} for h in hosts]
@@ -125,8 +161,12 @@ async def list_hosts(db: AsyncSession = Depends(get_db),
 @router.post("/hosts", status_code=201)
 async def create_host(data: HAHostCreate, db: AsyncSession = Depends(get_db),
                       admin: User = Depends(require_admin)):
-    host = HAHost(name=data.name, base_url=data.base_url.rstrip("/"),
-                  token=data.token, description=data.description)
+    host = HAHost(
+        name=data.name,
+        base_url=data.base_url.rstrip("/"),
+        token=encrypt(data.token),  # cifrato
+        description=data.description
+    )
     db.add(host)
     await db.commit()
     return {"message": f"Host '{data.name}' aggiunto", "id": str(host.id)}
@@ -240,33 +280,6 @@ async def assign_role(role_id: str, user_id: str,
 async def remove_role(role_id: str, user_id: str,
                       db: AsyncSession = Depends(get_db),
                       admin: User = Depends(require_admin)):
-    result = await db.execute(
-        select(UserRole).where(UserRole.user_id == user_id,
-                               UserRole.role_id == role_id))
-    ur = result.scalar_one_or_none()
-    if not ur:
-        raise HTTPException(404, "Assegnazione non trovata")
-    await db.delete(ur)
-    await db.commit()
-    return {"message": "Ruolo rimosso"}
-
-@router.get("/users/{user_id}/roles")
-async def get_user_roles(user_id: str, db: AsyncSession = Depends(get_db),
-                         admin: User = Depends(require_admin)):
-    result = await db.execute(
-        select(UserRole).where(UserRole.user_id == user_id))
-    user_roles = result.scalars().all()
-    out = []
-    for ur in user_roles:
-        role = await db.get(Role, ur.role_id)
-        if role:
-            out.append({"assignment_id": str(ur.id), "role_id": str(role.id), "role_name": role.name})
-    return out
-
-@router.delete("/users/{user_id}/roles/{role_id}")
-async def remove_user_role(user_id: str, role_id: str,
-                           db: AsyncSession = Depends(get_db),
-                           admin: User = Depends(require_admin)):
     result = await db.execute(
         select(UserRole).where(UserRole.user_id == user_id,
                                UserRole.role_id == role_id))

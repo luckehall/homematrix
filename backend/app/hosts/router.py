@@ -5,6 +5,7 @@ from app.db import get_db
 from app.models import User, HAHost, UserRole, RolePermission
 from app.auth.router import get_current_user
 import httpx, json
+from app.crypto import decrypt
 
 router = APIRouter()
 
@@ -62,7 +63,7 @@ async def get_states(host_id: str, db: AsyncSession = Depends(get_db),
     allowed_domains, allowed_entities = await get_user_permissions(user, host_id, db)
     async with httpx.AsyncClient(verify=True, timeout=10) as client:
         resp = await client.get(f"{host.base_url}/api/states",
-                                headers={"Authorization": f"Bearer {host.token}"})
+                                headers={"Authorization": f"Bearer {decrypt(host.token)}"})
     if resp.status_code != 200:
         raise HTTPException(resp.status_code, "Errore comunicazione con HA")
     states = resp.json()
@@ -80,7 +81,7 @@ async def get_state(host_id: str, entity_id: str,
             raise HTTPException(403, "Entità non autorizzata")
     async with httpx.AsyncClient(verify=True, timeout=10) as client:
         resp = await client.get(f"{host.base_url}/api/states/{entity_id}",
-                                headers={"Authorization": f"Bearer {host.token}"})
+                                headers={"Authorization": f"Bearer {decrypt(host.token)}"})
     if resp.status_code == 404:
         raise HTTPException(404, f"Entità '{entity_id}' non trovata")
     return resp.json()
@@ -113,7 +114,7 @@ async def get_ha_config(host_id: str, db: AsyncSession = Depends(get_db),
     host = await get_active_host(host_id, db)
     async with httpx.AsyncClient(verify=True, timeout=10) as client:
         resp = await client.get(f"{host.base_url}/api/config",
-                                headers={"Authorization": f"Bearer {host.token}"})
+                                headers={"Authorization": f"Bearer {decrypt(host.token)}"})
     return resp.json()
 
 @router.get("/{host_id}/domains")
@@ -122,7 +123,7 @@ async def get_domains(host_id: str, db: AsyncSession = Depends(get_db),
     host = await get_active_host(host_id, db)
     async with httpx.AsyncClient(verify=True, timeout=15) as client:
         resp = await client.get(f"{host.base_url}/api/states",
-                                headers={"Authorization": f"Bearer {host.token}"})
+                                headers={"Authorization": f"Bearer {decrypt(host.token)}"})
     if resp.status_code != 200:
         raise HTTPException(resp.status_code, "Errore comunicazione con HA")
     states = resp.json()

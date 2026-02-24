@@ -11,6 +11,8 @@ from app.auth.service import (hash_password, verify_password,
                                create_access_token, create_refresh_token,
                                decode_access_token)
 from app.config import settings
+from app.limiter import limiter
+from fastapi import Request
 
 router = APIRouter()
 bearer = HTTPBearer(auto_error=False)
@@ -30,7 +32,8 @@ class TokenResponse(BaseModel):
     token_type: str = "bearer"
 
 @router.post("/register", status_code=201)
-async def register(data: RegisterRequest, db: AsyncSession = Depends(get_db)):
+@limiter.limit("5/minute")
+async def register(request: Request, data: RegisterRequest, db: AsyncSession = Depends(get_db)):
     existing = await db.execute(select(User).where(User.email == data.email))
     if existing.scalar_one_or_none():
         raise HTTPException(400, "Email già registrata")
@@ -46,7 +49,8 @@ async def register(data: RegisterRequest, db: AsyncSession = Depends(get_db)):
     return {"message": "Registrazione completata. Attendi l'approvazione dell'amministratore."}
 
 @router.post("/login", response_model=TokenResponse)
-async def login(data: LoginRequest, response: Response, db: AsyncSession = Depends(get_db)):
+@limiter.limit("10/minute")
+async def login(request: Request, data: LoginRequest, response: Response, db: AsyncSession = Depends(get_db)):
     result = await db.execute(select(User).where(User.email == data.email))
     user = result.scalar_one_or_none()
     if not user or not verify_password(data.password, user.hashed_password):
@@ -129,5 +133,11 @@ async def change_password(data: ChangePasswordRequest,
     if not verify_password(data.current_password, user.hashed_password):
         raise HTTPException(400, "Password attuale non corretta")
     user.hashed_password = hash_password(data.new_password)
+    # Revoca tutte le sessioni attive
+    from sqlalchemy import select as sa_select
+    sessions_result = await db.execute(
+        sa_select(Session).where(Session.user_id == user.id, Session.revoked == False))
+    for s in sessions_result.scalars().all():
+        s.revoked = True
     await db.commit()
-    return {"message": "Password aggiornata con successo"}
+    return {"message": "Password aggiornata, tutte le sessioni revocate"}
