@@ -78,7 +78,7 @@ body { background:var(--bg); color:var(--text); font-family:'Syne',sans-serif; }
 .sensor-card { background:var(--surface); border:1px solid var(--border); border-radius:14px; padding:16px; }
 .sensor-label { font-size:10px; letter-spacing:.08em; text-transform:uppercase; color:var(--muted); font-family:'DM Mono',monospace; margin-bottom:8px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
 .sensor-icon { font-size:22px; margin-bottom:6px; }
-.sensor-value { font-size:15px; font-weight:800; word-break:break-word; overflow:hidden; }
+.sensor-value { font-size:14px; font-weight:500; word-break:break-word; overflow:hidden; color:var(--text); letter-spacing:.01em; }
 .sensor-unit { font-size:12px; font-weight:400; color:var(--muted); margin-left:2px; }
 .btn-press { font-size:11px; color:var(--accent); background:rgba(0,229,192,.1); border:1px solid rgba(0,229,192,.2); border-radius:8px; padding:4px 10px; font-family:'DM Mono',monospace; }
 .btn-device:hover .btn-press { background:rgba(0,229,192,.2); }
