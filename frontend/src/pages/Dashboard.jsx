@@ -81,17 +81,6 @@ export default function Dashboard() {
         ))}
 
         <div className="sidebar-footer">
-          <div className="nav-item" onClick={() => navigate('/profile')}>
-            <span className="nav-icon">👤</span> Profilo
-          </div>
-          {user?.is_admin && (
-            <div className="nav-item" onClick={() => navigate('/admin')}>
-              <span className="nav-icon">⚙️</span> Admin
-            </div>
-          )}
-          <div className="nav-item" onClick={handleLogout}>
-            <span className="nav-icon">↩</span> Logout
-          </div>
         </div>
       </aside>
 
@@ -101,7 +90,16 @@ export default function Dashboard() {
             <h1 className="dash-title">{selectedHost?.name || 'Seleziona host'}</h1>
             <div className="dash-sub">{states.length} entità · {devices.length} device · {sensors.length} sensori</div>
           </div>
-          <div className="auto-banner">🔓 Sessione automatica attiva</div>
+          <div className="dash-header-right">
+            <div className="auto-banner">🔓 Sessione automatica attiva</div>
+            <div className="header-actions">
+              <button className="btn-header" onClick={() => navigate('/profile')}>👤 Profilo</button>
+              {user?.is_admin && (
+                <button className="btn-header" onClick={() => navigate('/admin')}>⚙️ Admin</button>
+              )}
+              <button className="btn-header btn-logout" onClick={handleLogout}>↩ Logout</button>
+            </div>
+          </div>
         </div>
 
         {loading && <div className="loading-bar" />}

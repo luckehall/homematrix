@@ -82,3 +82,20 @@ body { background:var(--bg); color:var(--text); font-family:'Syne',sans-serif; }
 .sensor-unit { font-size:12px; font-weight:400; color:var(--muted); margin-left:2px; }
 .btn-press { font-size:11px; color:var(--accent); background:rgba(0,229,192,.1); border:1px solid rgba(0,229,192,.2); border-radius:8px; padding:4px 10px; font-family:'DM Mono',monospace; }
 .btn-device:hover .btn-press { background:rgba(0,229,192,.2); }
+
+.dash-header-right { display:flex; flex-direction:column; align-items:flex-end; gap:10px; }
+.header-actions { display:flex; align-items:center; gap:8px; }
+.btn-header {
+  background:var(--surface2);
+  border:1px solid var(--border);
+  border-radius:8px;
+  padding:8px 14px;
+  color:var(--muted);
+  font-size:12px;
+  font-family:'Syne',sans-serif;
+  cursor:pointer;
+  transition:all .2s;
+  white-space:nowrap;
+}
+.btn-header:hover { color:var(--text); border-color:rgba(255,255,255,.2); }
+.btn-logout:hover { color:var(--red); border-color:rgba(239,68,68,.3); }
