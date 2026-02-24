@@ -129,3 +129,28 @@ async def get_domains(host_id: str, db: AsyncSession = Depends(get_db),
     domains = sorted(set(s["entity_id"].split(".")[0] for s in states))
     entities = sorted(s["entity_id"] for s in states)
     return {"domains": domains, "entities": entities}
+
+@router.get("/")
+async def get_my_hosts(db: AsyncSession = Depends(get_db),
+                       user: User = Depends(get_current_user)):
+    """Restituisce gli host accessibili all'utente corrente."""
+    if user.is_admin:
+        result = await db.execute(select(HAHost).where(HAHost.active == True))
+        hosts = result.scalars().all()
+    else:
+        result = await db.execute(
+            select(UserRole).where(UserRole.user_id == user.id))
+        user_roles = result.scalars().all()
+        host_ids = set()
+        for ur in user_roles:
+            perm_result = await db.execute(
+                select(RolePermission).where(RolePermission.role_id == ur.role_id))
+            perms = perm_result.scalars().all()
+            for p in perms:
+                host_ids.add(str(p.host_id))
+        if not host_ids:
+            return []
+        result = await db.execute(
+            select(HAHost).where(HAHost.active == True))
+        hosts = [h for h in result.scalars().all() if str(h.id) in host_ids]
+    return [{"id": str(h.id), "name": h.name, "description": h.description} for h in hosts]

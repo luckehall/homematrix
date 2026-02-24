@@ -14,7 +14,7 @@ export default function Dashboard() {
   const [filter, setFilter] = useState('all')
 
   useEffect(() => {
-    api.get('/api/admin/hosts').then(r => {
+    api.get('/api/hosts/').then(r => {
       setHosts(r.data)
       if (r.data.length > 0) setSelectedHost(r.data[0])
     }).catch(() => {})
