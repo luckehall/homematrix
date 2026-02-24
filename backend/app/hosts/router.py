@@ -115,3 +115,17 @@ async def get_ha_config(host_id: str, db: AsyncSession = Depends(get_db),
         resp = await client.get(f"{host.base_url}/api/config",
                                 headers={"Authorization": f"Bearer {host.token}"})
     return resp.json()
+
+@router.get("/{host_id}/domains")
+async def get_domains(host_id: str, db: AsyncSession = Depends(get_db),
+                      user: User = Depends(get_current_user)):
+    host = await get_active_host(host_id, db)
+    async with httpx.AsyncClient(verify=True, timeout=15) as client:
+        resp = await client.get(f"{host.base_url}/api/states",
+                                headers={"Authorization": f"Bearer {host.token}"})
+    if resp.status_code != 200:
+        raise HTTPException(resp.status_code, "Errore comunicazione con HA")
+    states = resp.json()
+    domains = sorted(set(s["entity_id"].split(".")[0] for s in states))
+    entities = sorted(s["entity_id"] for s in states)
+    return {"domains": domains, "entities": entities}

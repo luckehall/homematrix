@@ -249,3 +249,30 @@ async def remove_role(role_id: str, user_id: str,
     await db.delete(ur)
     await db.commit()
     return {"message": "Ruolo rimosso"}
+
+@router.get("/users/{user_id}/roles")
+async def get_user_roles(user_id: str, db: AsyncSession = Depends(get_db),
+                         admin: User = Depends(require_admin)):
+    result = await db.execute(
+        select(UserRole).where(UserRole.user_id == user_id))
+    user_roles = result.scalars().all()
+    out = []
+    for ur in user_roles:
+        role = await db.get(Role, ur.role_id)
+        if role:
+            out.append({"assignment_id": str(ur.id), "role_id": str(role.id), "role_name": role.name})
+    return out
+
+@router.delete("/users/{user_id}/roles/{role_id}")
+async def remove_user_role(user_id: str, role_id: str,
+                           db: AsyncSession = Depends(get_db),
+                           admin: User = Depends(require_admin)):
+    result = await db.execute(
+        select(UserRole).where(UserRole.user_id == user_id,
+                               UserRole.role_id == role_id))
+    ur = result.scalar_one_or_none()
+    if not ur:
+        raise HTTPException(404, "Assegnazione non trovata")
+    await db.delete(ur)
+    await db.commit()
+    return {"message": "Ruolo rimosso"}

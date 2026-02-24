@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { useNavigate } from 'react-router-dom'
 import api from '../api/client'
 import './Admin.css'
@@ -10,6 +10,7 @@ export default function Admin() {
   const [users, setUsers] = useState([])
   const [hosts, setHosts] = useState([])
   const [roles, setRoles] = useState([])
+  const [userRoles, setUserRoles] = useState({}) // { userId: [{assignment_id, role_id, role_name}] }
   const [msg, setMsg] = useState('')
 
   const [newUser, setNewUser] = useState({ email:'', full_name:'', password:'', is_admin:false })
@@ -27,6 +28,13 @@ export default function Admin() {
       api.get('/api/admin/roles'),
     ])
     setPending(p.data); setUsers(u.data); setHosts(h.data); setRoles(r.data)
+    // Carica ruoli per ogni utente
+    const rolesMap = {}
+    await Promise.all(u.data.map(async user => {
+      const res = await api.get(`/api/admin/users/${user.id}/roles`)
+      rolesMap[user.id] = res.data
+    }))
+    setUserRoles(rolesMap)
   }
 
   useEffect(() => { load() }, [])
@@ -50,15 +58,25 @@ export default function Admin() {
     if (!pwd) return
     await api.post(`/api/admin/users/${userId}/reset-password`, { new_password: pwd })
     notify('Password reimpostata ✓')
-    setResetPwd({})
+    setResetPwd({...resetPwd, [userId]: ''})
   }
 
   const doAssignRole = async (userId) => {
     const roleId = assignRole[userId]
     if (!roleId) return
-    await api.post(`/api/admin/roles/${roleId}/assign/${userId}`)
-    notify('Ruolo assegnato ✓')
-    setAssignRole({})
+    try {
+      await api.post(`/api/admin/roles/${roleId}/assign/${userId}`)
+      notify('Ruolo assegnato ✓')
+      setAssignRole({...assignRole, [userId]: ''})
+      load()
+    } catch (e) {
+      notify(e.response?.data?.detail || 'Errore assegnazione')
+    }
+  }
+
+  const doRemoveRole = async (userId, roleId) => {
+    await api.delete(`/api/admin/users/${userId}/roles/${roleId}`)
+    notify('Ruolo rimosso')
     load()
   }
 
@@ -86,8 +104,8 @@ export default function Admin() {
     if (!p.host_id) return
     await api.post(`/api/admin/roles/${roleId}/permissions`, {
       host_id: p.host_id,
-      allowed_domains: p.domains ? p.domains.split(',').map(s=>s.trim()).filter(Boolean) : null,
-      allowed_entities: p.entities ? p.entities.split(',').map(s=>s.trim()).filter(Boolean) : null,
+      allowed_domains: p.domains?.length ? p.domains : null,
+      allowed_entities: p.entities?.length ? p.entities : null,
     })
     notify('Permesso aggiunto ✓')
     setNewPerm({...newPerm, [roleId]: {}})
@@ -126,7 +144,6 @@ export default function Admin() {
 
       <div className="admin-content">
 
-        {/* ── RICHIESTE PENDING ── */}
         {tab === 'pending' && (
           <div className="cards-grid">
             {pending.length === 0 && <div className="empty">Nessuna richiesta in attesa</div>}
@@ -147,7 +164,6 @@ export default function Admin() {
           </div>
         )}
 
-        {/* ── UTENTI ── */}
         {tab === 'users' && (
           <div className="cards-grid">
             {users.map(u => (
@@ -156,6 +172,15 @@ export default function Admin() {
                 <div className="user-info">
                   <div className="user-name">{u.full_name} {u.is_admin && <span className="badge-admin">admin</span>}</div>
                   <div className="user-email">{u.email}</div>
+                  {/* Ruoli assegnati */}
+                  <div className="user-roles">
+                    {(userRoles[u.id] || []).map(r => (
+                      <span key={r.role_id} className="role-chip">
+                        {r.role_name}
+                        <span className="role-chip-remove" onClick={() => doRemoveRole(u.id, r.role_id)}>✕</span>
+                      </span>
+                    ))}
+                  </div>
                 </div>
                 <span className={`status-pill status-${u.status}`}>{u.status}</span>
                 <div className="inline-actions">
@@ -168,26 +193,28 @@ export default function Admin() {
                   {!u.is_admin && (
                     <button className="btn-toggle" onClick={() => mkAdmin(u.id)}>→ Admin</button>
                   )}
-                  {/* Assign role */}
-                  <select className="select-sm"
-                    value={assignRole[u.id] || ''}
-                    onChange={e => setAssignRole({...assignRole, [u.id]: e.target.value})}>
-                    <option value="">Assegna ruolo...</option>
-                    {roles.map(r => <option key={r.id} value={r.id}>{r.name}</option>)}
-                  </select>
-                  <button className="btn-toggle" onClick={() => doAssignRole(u.id)}>✓</button>
-                  {/* Reset password */}
-                  <input className="input-sm" type="password" placeholder="Nuova password"
-                    value={resetPwd[u.id] || ''}
-                    onChange={e => setResetPwd({...resetPwd, [u.id]: e.target.value})} />
-                  <button className="btn-toggle" onClick={() => doResetPwd(u.id)}>Reset pwd</button>
+                  <div className="assign-row">
+                    <select className="select-sm"
+                      value={assignRole[u.id] || ''}
+                      onChange={e => setAssignRole({...assignRole, [u.id]: e.target.value})}>
+                      <option value="">Assegna ruolo...</option>
+                      {roles.filter(r => !(userRoles[u.id]||[]).find(ur => ur.role_id === r.id))
+                        .map(r => <option key={r.id} value={r.id}>{r.name}</option>)}
+                    </select>
+                    <button className="btn-approve btn-xs" onClick={() => doAssignRole(u.id)}>+ Assegna</button>
+                  </div>
+                  <div className="assign-row">
+                    <input className="input-sm" type="password" placeholder="Nuova password"
+                      value={resetPwd[u.id] || ''}
+                      onChange={e => setResetPwd({...resetPwd, [u.id]: e.target.value})} />
+                    <button className="btn-toggle btn-xs" onClick={() => doResetPwd(u.id)}>Reset pwd</button>
+                  </div>
                 </div>
               </div>
             ))}
           </div>
         )}
 
-        {/* ── CREA UTENTE ── */}
         {tab === 'create' && (
           <form className="host-form" onSubmit={createUser}>
             <h3>Crea nuovo utente</h3>
@@ -203,7 +230,7 @@ export default function Admin() {
               <div className="field"><label>Password</label>
                 <input type="password" value={newUser.password} onChange={e=>setNewUser({...newUser,password:e.target.value})} required placeholder="••••••••" />
               </div>
-              <div className="field" style={{justifyContent:'center',display:'flex',alignItems:'flex-end',paddingBottom:'4px'}}>
+              <div className="field" style={{display:'flex',alignItems:'flex-end',paddingBottom:'4px'}}>
                 <label style={{display:'flex',alignItems:'center',gap:'10px',cursor:'pointer'}}>
                   <input type="checkbox" checked={newUser.is_admin} onChange={e=>setNewUser({...newUser,is_admin:e.target.checked})} />
                   Utente amministratore
@@ -214,7 +241,6 @@ export default function Admin() {
           </form>
         )}
 
-        {/* ── HOST ── */}
         {tab === 'hosts' && (
           <>
             <form className="host-form" onSubmit={addHost}>
@@ -247,7 +273,6 @@ export default function Admin() {
           </>
         )}
 
-        {/* ── RUOLI & PERMESSI ── */}
         {tab === 'roles' && (
           <>
             <form className="host-form" onSubmit={createRole} style={{marginBottom:'24px'}}>
@@ -262,53 +287,132 @@ export default function Admin() {
             </form>
 
             {roles.map(role => (
-              <div key={role.id} className="role-card">
-                <div className="role-header">
-                  <div>
-                    <div className="role-name">{role.name}</div>
-                    {role.description && <div className="role-desc">{role.description}</div>}
-                  </div>
-                </div>
-
-                {/* Permessi esistenti */}
-                {role.permissions.length > 0 && (
-                  <div className="perms-list">
-                    {role.permissions.map(p => {
-                      const host = hosts.find(h => h.id === p.host_id)
-                      return (
-                        <div key={p.id} className="perm-row">
-                          <span className="perm-host">🏠 {host?.name || p.host_id}</span>
-                          {p.allowed_domains && <span className="perm-tag">Domini: {p.allowed_domains.join(', ')}</span>}
-                          {p.allowed_entities && <span className="perm-tag">Entità: {p.allowed_entities.length} specifiche</span>}
-                          {!p.allowed_domains && !p.allowed_entities && <span className="perm-tag full">Accesso completo</span>}
-                          <button className="btn-deny btn-xs" onClick={() => delPerm(role.id, p.id)}>✕</button>
-                        </div>
-                      )
-                    })}
-                  </div>
-                )}
-
-                {/* Aggiungi permesso */}
-                <div className="add-perm">
-                  <select className="select-sm"
-                    value={newPerm[role.id]?.host_id || ''}
-                    onChange={e => setNewPerm({...newPerm, [role.id]: {...(newPerm[role.id]||{}), host_id: e.target.value}})}>
-                    <option value="">Seleziona host...</option>
-                    {hosts.map(h => <option key={h.id} value={h.id}>{h.name}</option>)}
-                  </select>
-                  <input className="input-sm" placeholder="Domini: switch,light,sensor"
-                    value={newPerm[role.id]?.domains || ''}
-                    onChange={e => setNewPerm({...newPerm, [role.id]: {...(newPerm[role.id]||{}), domains: e.target.value}})} />
-                  <input className="input-sm" placeholder="Entità: switch.luce,sensor.temp"
-                    value={newPerm[role.id]?.entities || ''}
-                    onChange={e => setNewPerm({...newPerm, [role.id]: {...(newPerm[role.id]||{}), entities: e.target.value}})} />
-                  <button className="btn-approve btn-xs" onClick={() => addPerm(role.id)}>+ Aggiungi</button>
-                </div>
-              </div>
+              <RoleCard key={role.id} role={role} hosts={hosts}
+                newPerm={newPerm[role.id] || {}}
+                onPermChange={p => setNewPerm({...newPerm, [role.id]: p})}
+                onAddPerm={() => addPerm(role.id)}
+                onDelPerm={(permId) => delPerm(role.id, permId)} />
             ))}
           </>
         )}
+      </div>
+    </div>
+  )
+}
 
+function RoleCard({ role, hosts, newPerm, onPermChange, onAddPerm, onDelPerm }) {
+  const [haData, setHaData] = useState({ domains: [], entities: [] })
+  const [loadingHa, setLoadingHa] = useState(false)
+  const [domainSearch, setDomainSearch] = useState('')
+  const [entitySearch, setEntitySearch] = useState('')
+
+  const loadHaData = async (hostId) => {
+    if (!hostId) return
+    setLoadingHa(true)
+    try {
+      const res = await api.get(`/api/hosts/${hostId}/domains`)
+      setHaData(res.data)
+    } catch {}
+    finally { setLoadingHa(false) }
+  }
+
+  const toggleDomain = (domain) => {
+    const current = newPerm.domains || []
+    const updated = current.includes(domain)
+      ? current.filter(d => d !== domain)
+      : [...current, domain]
+    onPermChange({...newPerm, domains: updated})
+  }
+
+  const toggleEntity = (entity) => {
+    const current = newPerm.entities || []
+    const updated = current.includes(entity)
+      ? current.filter(e => e !== entity)
+      : [...current, entity]
+    onPermChange({...newPerm, entities: updated})
+  }
+
+  const filteredDomains = haData.domains.filter(d => d.includes(domainSearch.toLowerCase()))
+  const filteredEntities = haData.entities.filter(e => e.includes(entitySearch.toLowerCase()))
+
+  return (
+    <div className="role-card">
+      <div className="role-header">
+        <div>
+          <div className="role-name">{role.name}</div>
+          {role.description && <div className="role-desc">{role.description}</div>}
+        </div>
+      </div>
+
+      {role.permissions.length > 0 && (
+        <div className="perms-list">
+          {role.permissions.map(p => {
+            const host = hosts.find(h => h.id === p.host_id)
+            return (
+              <div key={p.id} className="perm-row">
+                <span className="perm-host">🏠 {host?.name || p.host_id}</span>
+                {p.allowed_domains && <span className="perm-tag">Domini: {p.allowed_domains.join(', ')}</span>}
+                {p.allowed_entities && <span className="perm-tag">Entità: {p.allowed_entities.length} specifiche</span>}
+                {!p.allowed_domains && !p.allowed_entities && <span className="perm-tag full">Accesso completo</span>}
+                <button className="btn-deny btn-xs" onClick={() => onDelPerm(p.id)}>✕</button>
+              </div>
+            )
+          })}
+        </div>
+      )}
+
+      <div className="add-perm-section">
+        <div className="add-perm-header">Aggiungi permesso</div>
+        <div className="add-perm-row">
+          <select className="select-sm" value={newPerm.host_id || ''}
+            onChange={e => {
+              onPermChange({...newPerm, host_id: e.target.value, domains:[], entities:[]})
+              loadHaData(e.target.value)
+            }}>
+            <option value="">Seleziona host...</option>
+            {hosts.map(h => <option key={h.id} value={h.id}>{h.name}</option>)}
+          </select>
+          <button className="btn-approve btn-xs" onClick={onAddPerm}>+ Aggiungi permesso</button>
+        </div>
+
+        {newPerm.host_id && (
+          <div className="perm-picker">
+            {loadingHa && <div className="perm-loading">Caricamento entità da HA...</div>}
+
+            {!loadingHa && haData.domains.length > 0 && (
+              <div className="picker-col">
+                <div className="picker-title">Domini <span className="picker-count">{(newPerm.domains||[]).length} selezionati</span></div>
+                <input className="picker-search" placeholder="Cerca dominio..." value={domainSearch} onChange={e => setDomainSearch(e.target.value)} />
+                <div className="picker-list">
+                  {filteredDomains.map(d => (
+                    <div key={d} className={`picker-item ${(newPerm.domains||[]).includes(d) ? 'selected' : ''}`}
+                      onClick={() => toggleDomain(d)}>
+                      <span className="picker-check">{(newPerm.domains||[]).includes(d) ? '✓' : ''}</span>
+                      {d}
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {!loadingHa && haData.entities.length > 0 && (
+              <div className="picker-col">
+                <div className="picker-title">Entità specifiche <span className="picker-count">{(newPerm.entities||[]).length} selezionate</span></div>
+                <input className="picker-search" placeholder="Cerca entity_id..." value={entitySearch} onChange={e => setEntitySearch(e.target.value)} />
+                <div className="picker-list">
+                  {filteredEntities.slice(0, 100).map(e => (
+                    <div key={e} className={`picker-item ${(newPerm.entities||[]).includes(e) ? 'selected' : ''}`}
+                      onClick={() => toggleEntity(e)}>
+                      <span className="picker-check">{(newPerm.entities||[]).includes(e) ? '✓' : ''}</span>
+                      {e}
+                    </div>
+                  ))}
+                  {filteredEntities.length > 100 && <div className="picker-more">+{filteredEntities.length - 100} altri — affina la ricerca</div>}
+                </div>
+              </div>
+            )}
+          </div>
+        )}
       </div>
     </div>
   )
