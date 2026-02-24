@@ -36,14 +36,12 @@ export default function Dashboard() {
 
   const callService = async (domain, service, entity_id) => {
     await api.post(`/api/hosts/${selectedHost.id}/services/${domain}/${service}`, { entity_id })
-    // Aggiorna stati dopo azione
     const r = await api.get(`/api/hosts/${selectedHost.id}/states`)
     setStates(r.data)
   }
 
   const domains = ['all', ...new Set(states.map(s => s.entity_id.split('.')[0]))]
   const filtered = filter === 'all' ? states : states.filter(s => s.entity_id.startsWith(filter + '.'))
-
   const sensors = filtered.filter(s => ['sensor','binary_sensor','weather'].includes(s.entity_id.split('.')[0]))
   const devices = filtered.filter(s => ['switch','light','climate','cover','fan','media_player'].includes(s.entity_id.split('.')[0]))
 
@@ -74,6 +72,9 @@ export default function Dashboard() {
         ))}
 
         <div className="sidebar-footer">
+          <div className="nav-item" onClick={() => navigate('/profile')}>
+            <span className="nav-icon">👤</span> Profilo
+          </div>
           {user?.is_admin && (
             <div className="nav-item" onClick={() => navigate('/admin')}>
               <span className="nav-icon">⚙️</span> Admin

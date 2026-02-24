@@ -9,50 +9,94 @@ export default function Admin() {
   const [pending, setPending] = useState([])
   const [users, setUsers] = useState([])
   const [hosts, setHosts] = useState([])
-  const [newHost, setNewHost] = useState({ name:'', base_url:'', token:'', description:'' })
+  const [roles, setRoles] = useState([])
   const [msg, setMsg] = useState('')
 
+  const [newUser, setNewUser] = useState({ email:'', full_name:'', password:'', is_admin:false })
+  const [newHost, setNewHost] = useState({ name:'', base_url:'', token:'', description:'' })
+  const [newRole, setNewRole] = useState({ name:'', description:'' })
+  const [resetPwd, setResetPwd] = useState({})
+  const [assignRole, setAssignRole] = useState({})
+  const [newPerm, setNewPerm] = useState({})
+
   const load = async () => {
-    const [p, u, h] = await Promise.all([
+    const [p, u, h, r] = await Promise.all([
       api.get('/api/admin/users/pending'),
       api.get('/api/admin/users'),
       api.get('/api/admin/hosts'),
+      api.get('/api/admin/roles'),
     ])
-    setPending(p.data)
-    setUsers(u.data)
-    setHosts(h.data)
+    setPending(p.data); setUsers(u.data); setHosts(h.data); setRoles(r.data)
   }
 
   useEffect(() => { load() }, [])
 
-  const approve = async id => {
-    await api.post(`/api/admin/users/${id}/approve`)
-    setMsg('Utente approvato ✓')
+  const notify = m => { setMsg(m); setTimeout(() => setMsg(''), 3000) }
+
+  const approve  = async id => { await api.post(`/api/admin/users/${id}/approve`); notify('Utente approvato ✓'); load() }
+  const revoke   = async id => { await api.post(`/api/admin/users/${id}/revoke`); notify('Utente revocato'); load() }
+  const mkAdmin  = async id => { await api.post(`/api/admin/users/${id}/make-admin`); notify('Utente promosso admin ✓'); load() }
+
+  const createUser = async e => {
+    e.preventDefault()
+    await api.post('/api/admin/users', newUser)
+    notify(`Utente ${newUser.email} creato ✓`)
+    setNewUser({ email:'', full_name:'', password:'', is_admin:false })
     load()
   }
 
-  const revoke = async id => {
-    await api.post(`/api/admin/users/${id}/revoke`)
-    setMsg('Utente revocato')
+  const doResetPwd = async (userId) => {
+    const pwd = resetPwd[userId]
+    if (!pwd) return
+    await api.post(`/api/admin/users/${userId}/reset-password`, { new_password: pwd })
+    notify('Password reimpostata ✓')
+    setResetPwd({})
+  }
+
+  const doAssignRole = async (userId) => {
+    const roleId = assignRole[userId]
+    if (!roleId) return
+    await api.post(`/api/admin/roles/${roleId}/assign/${userId}`)
+    notify('Ruolo assegnato ✓')
+    setAssignRole({})
     load()
   }
 
   const addHost = async e => {
     e.preventDefault()
     await api.post('/api/admin/hosts', newHost)
-    setMsg(`Host '${newHost.name}' aggiunto ✓`)
+    notify(`Host '${newHost.name}' aggiunto ✓`)
     setNewHost({ name:'', base_url:'', token:'', description:'' })
     load()
   }
 
-  const toggleHost = async id => {
-    await api.patch(`/api/admin/hosts/${id}/toggle`)
+  const toggleHost  = async id => { await api.patch(`/api/admin/hosts/${id}/toggle`); load() }
+  const deleteHost  = async id => { if (!confirm('Eliminare?')) return; await api.delete(`/api/admin/hosts/${id}`); load() }
+
+  const createRole = async e => {
+    e.preventDefault()
+    await api.post('/api/admin/roles', newRole)
+    notify(`Ruolo '${newRole.name}' creato ✓`)
+    setNewRole({ name:'', description:'' })
     load()
   }
 
-  const deleteHost = async id => {
-    if (!confirm('Eliminare questo host?')) return
-    await api.delete(`/api/admin/hosts/${id}`)
+  const addPerm = async (roleId) => {
+    const p = newPerm[roleId] || {}
+    if (!p.host_id) return
+    await api.post(`/api/admin/roles/${roleId}/permissions`, {
+      host_id: p.host_id,
+      allowed_domains: p.domains ? p.domains.split(',').map(s=>s.trim()).filter(Boolean) : null,
+      allowed_entities: p.entities ? p.entities.split(',').map(s=>s.trim()).filter(Boolean) : null,
+    })
+    notify('Permesso aggiunto ✓')
+    setNewPerm({...newPerm, [roleId]: {}})
+    load()
+  }
+
+  const delPerm = async (roleId, permId) => {
+    await api.delete(`/api/admin/roles/${roleId}/permissions/${permId}`)
+    notify('Permesso rimosso')
     load()
   }
 
@@ -66,18 +110,23 @@ export default function Admin() {
         <button className="btn-back" onClick={() => navigate('/dashboard')}>← Dashboard</button>
       </div>
 
-      {msg && <div className="admin-msg" onClick={() => setMsg('')}>{msg} ✕</div>}
+      {msg && <div className="admin-msg">{msg}</div>}
 
       <div className="admin-tabs">
-        {['pending','users','hosts'].map(t => (
-          <div key={t} className={`admin-tab ${tab===t?'active':''}`} onClick={() => setTab(t)}>
-            {t === 'pending' ? `Richieste (${pending.length})` : t === 'users' ? 'Utenti' : 'Host HA'}
-          </div>
+        {[
+          ['pending', `Richieste (${pending.length})`],
+          ['users', 'Utenti'],
+          ['create', 'Nuovo Utente'],
+          ['hosts', 'Host HA'],
+          ['roles', 'Ruoli & Permessi'],
+        ].map(([t, label]) => (
+          <div key={t} className={`admin-tab ${tab===t?'active':''}`} onClick={() => setTab(t)}>{label}</div>
         ))}
       </div>
 
       <div className="admin-content">
 
+        {/* ── RICHIESTE PENDING ── */}
         {tab === 'pending' && (
           <div className="cards-grid">
             {pending.length === 0 && <div className="empty">Nessuna richiesta in attesa</div>}
@@ -98,24 +147,74 @@ export default function Admin() {
           </div>
         )}
 
+        {/* ── UTENTI ── */}
         {tab === 'users' && (
           <div className="cards-grid">
             {users.map(u => (
-              <div key={u.id} className="user-card">
+              <div key={u.id} className="user-card flexible">
                 <div className="user-avatar">{u.full_name[0]}</div>
                 <div className="user-info">
                   <div className="user-name">{u.full_name} {u.is_admin && <span className="badge-admin">admin</span>}</div>
                   <div className="user-email">{u.email}</div>
                 </div>
                 <span className={`status-pill status-${u.status}`}>{u.status}</span>
-                {u.status === 'active' && !u.is_admin && (
-                  <button className="btn-deny" onClick={() => revoke(u.id)}>Revoca</button>
-                )}
+                <div className="inline-actions">
+                  {u.status === 'active' && !u.is_admin && (
+                    <button className="btn-deny" onClick={() => revoke(u.id)}>Revoca</button>
+                  )}
+                  {u.status === 'revoked' && (
+                    <button className="btn-approve" onClick={() => approve(u.id)}>Riattiva</button>
+                  )}
+                  {!u.is_admin && (
+                    <button className="btn-toggle" onClick={() => mkAdmin(u.id)}>→ Admin</button>
+                  )}
+                  {/* Assign role */}
+                  <select className="select-sm"
+                    value={assignRole[u.id] || ''}
+                    onChange={e => setAssignRole({...assignRole, [u.id]: e.target.value})}>
+                    <option value="">Assegna ruolo...</option>
+                    {roles.map(r => <option key={r.id} value={r.id}>{r.name}</option>)}
+                  </select>
+                  <button className="btn-toggle" onClick={() => doAssignRole(u.id)}>✓</button>
+                  {/* Reset password */}
+                  <input className="input-sm" type="password" placeholder="Nuova password"
+                    value={resetPwd[u.id] || ''}
+                    onChange={e => setResetPwd({...resetPwd, [u.id]: e.target.value})} />
+                  <button className="btn-toggle" onClick={() => doResetPwd(u.id)}>Reset pwd</button>
+                </div>
               </div>
             ))}
           </div>
         )}
 
+        {/* ── CREA UTENTE ── */}
+        {tab === 'create' && (
+          <form className="host-form" onSubmit={createUser}>
+            <h3>Crea nuovo utente</h3>
+            <div className="form-row">
+              <div className="field"><label>Nome completo</label>
+                <input value={newUser.full_name} onChange={e=>setNewUser({...newUser,full_name:e.target.value})} required placeholder="Mario Rossi" />
+              </div>
+              <div className="field"><label>Email</label>
+                <input type="email" value={newUser.email} onChange={e=>setNewUser({...newUser,email:e.target.value})} required placeholder="mario@esempio.it" />
+              </div>
+            </div>
+            <div className="form-row">
+              <div className="field"><label>Password</label>
+                <input type="password" value={newUser.password} onChange={e=>setNewUser({...newUser,password:e.target.value})} required placeholder="••••••••" />
+              </div>
+              <div className="field" style={{justifyContent:'center',display:'flex',alignItems:'flex-end',paddingBottom:'4px'}}>
+                <label style={{display:'flex',alignItems:'center',gap:'10px',cursor:'pointer'}}>
+                  <input type="checkbox" checked={newUser.is_admin} onChange={e=>setNewUser({...newUser,is_admin:e.target.checked})} />
+                  Utente amministratore
+                </label>
+              </div>
+            </div>
+            <button className="btn-primary" type="submit">+ Crea utente</button>
+          </form>
+        )}
+
+        {/* ── HOST ── */}
         {tab === 'hosts' && (
           <>
             <form className="host-form" onSubmit={addHost}>
@@ -128,7 +227,6 @@ export default function Admin() {
               <div className="field"><label>Descrizione</label><input value={newHost.description} onChange={e=>setNewHost({...newHost,description:e.target.value})} placeholder="Opzionale" /></div>
               <button className="btn-primary" type="submit">+ Aggiungi Host</button>
             </form>
-
             <div className="cards-grid" style={{marginTop:'24px'}}>
               {hosts.map(h => (
                 <div key={h.id} className={`host-card ${h.active?'active':''}`}>
@@ -148,6 +246,69 @@ export default function Admin() {
             </div>
           </>
         )}
+
+        {/* ── RUOLI & PERMESSI ── */}
+        {tab === 'roles' && (
+          <>
+            <form className="host-form" onSubmit={createRole} style={{marginBottom:'24px'}}>
+              <h3>Crea nuovo ruolo</h3>
+              <div className="form-row">
+                <div className="field"><label>Nome ruolo</label>
+                  <input value={newRole.name} onChange={e=>setNewRole({...newRole,name:e.target.value})} required placeholder="es. Famiglia" /></div>
+                <div className="field"><label>Descrizione</label>
+                  <input value={newRole.description} onChange={e=>setNewRole({...newRole,description:e.target.value})} placeholder="Opzionale" /></div>
+              </div>
+              <button className="btn-primary" type="submit">+ Crea ruolo</button>
+            </form>
+
+            {roles.map(role => (
+              <div key={role.id} className="role-card">
+                <div className="role-header">
+                  <div>
+                    <div className="role-name">{role.name}</div>
+                    {role.description && <div className="role-desc">{role.description}</div>}
+                  </div>
+                </div>
+
+                {/* Permessi esistenti */}
+                {role.permissions.length > 0 && (
+                  <div className="perms-list">
+                    {role.permissions.map(p => {
+                      const host = hosts.find(h => h.id === p.host_id)
+                      return (
+                        <div key={p.id} className="perm-row">
+                          <span className="perm-host">🏠 {host?.name || p.host_id}</span>
+                          {p.allowed_domains && <span className="perm-tag">Domini: {p.allowed_domains.join(', ')}</span>}
+                          {p.allowed_entities && <span className="perm-tag">Entità: {p.allowed_entities.length} specifiche</span>}
+                          {!p.allowed_domains && !p.allowed_entities && <span className="perm-tag full">Accesso completo</span>}
+                          <button className="btn-deny btn-xs" onClick={() => delPerm(role.id, p.id)}>✕</button>
+                        </div>
+                      )
+                    })}
+                  </div>
+                )}
+
+                {/* Aggiungi permesso */}
+                <div className="add-perm">
+                  <select className="select-sm"
+                    value={newPerm[role.id]?.host_id || ''}
+                    onChange={e => setNewPerm({...newPerm, [role.id]: {...(newPerm[role.id]||{}), host_id: e.target.value}})}>
+                    <option value="">Seleziona host...</option>
+                    {hosts.map(h => <option key={h.id} value={h.id}>{h.name}</option>)}
+                  </select>
+                  <input className="input-sm" placeholder="Domini: switch,light,sensor"
+                    value={newPerm[role.id]?.domains || ''}
+                    onChange={e => setNewPerm({...newPerm, [role.id]: {...(newPerm[role.id]||{}), domains: e.target.value}})} />
+                  <input className="input-sm" placeholder="Entità: switch.luce,sensor.temp"
+                    value={newPerm[role.id]?.entities || ''}
+                    onChange={e => setNewPerm({...newPerm, [role.id]: {...(newPerm[role.id]||{}), entities: e.target.value}})} />
+                  <button className="btn-approve btn-xs" onClick={() => addPerm(role.id)}>+ Aggiungi</button>
+                </div>
+              </div>
+            ))}
+          </>
+        )}
+
       </div>
     </div>
   )

@@ -4,6 +4,7 @@ import Login from './pages/Login'
 import Register from './pages/Register'
 import Dashboard from './pages/Dashboard'
 import Admin from './pages/Admin'
+import Profile from './pages/Profile'
 
 function PrivateRoute({ children }) {
   const { user, loading } = useAuth()
@@ -24,12 +25,9 @@ export default function App() {
         <Routes>
           <Route path="/" element={<Login />} />
           <Route path="/register" element={<Register />} />
-          <Route path="/dashboard" element={
-            <PrivateRoute><Dashboard /></PrivateRoute>
-          } />
-          <Route path="/admin" element={
-            <AdminRoute><Admin /></AdminRoute>
-          } />
+          <Route path="/dashboard" element={<PrivateRoute><Dashboard /></PrivateRoute>} />
+          <Route path="/profile" element={<PrivateRoute><Profile /></PrivateRoute>} />
+          <Route path="/admin" element={<AdminRoute><Admin /></AdminRoute>} />
         </Routes>
       </BrowserRouter>
     </AuthProvider>

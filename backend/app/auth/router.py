@@ -109,3 +109,25 @@ async def require_admin(user: User = Depends(get_current_user)):
     if not user.is_admin:
         raise HTTPException(403, "Accesso riservato agli amministratori")
     return user
+
+class ChangePasswordRequest(BaseModel):
+    current_password: str
+    new_password: str
+
+@router.post("/change-password")
+async def change_password(data: ChangePasswordRequest,
+                          credentials: HTTPAuthorizationCredentials = Depends(bearer),
+                          db: AsyncSession = Depends(get_db)):
+    if not credentials:
+        raise HTTPException(401, "Token mancante")
+    payload = decode_access_token(credentials.credentials)
+    if not payload:
+        raise HTTPException(401, "Token non valido")
+    user = await db.get(User, payload["sub"])
+    if not user:
+        raise HTTPException(404, "Utente non trovato")
+    if not verify_password(data.current_password, user.hashed_password):
+        raise HTTPException(400, "Password attuale non corretta")
+    user.hashed_password = hash_password(data.new_password)
+    await db.commit()
+    return {"message": "Password aggiornata con successo"}
