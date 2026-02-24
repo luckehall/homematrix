@@ -333,7 +333,13 @@ function RoleCard({ role, hosts, newPerm, onPermChange, onAddPerm, onDelPerm }) 
   }
 
   const filteredDomains = haData.domains.filter(d => d.includes(domainSearch.toLowerCase()))
-  const filteredEntities = haData.entities.filter(e => e.includes(entitySearch.toLowerCase()))
+  const activeDomains = newPerm.domains || []
+  const filteredEntities = haData.entities.filter(e => {
+    const domain = e.split(".")[0]
+    const matchesDomain = activeDomains.length === 0 || activeDomains.includes(domain)
+    const matchesSearch = e.includes(entitySearch.toLowerCase())
+    return matchesDomain && matchesSearch
+  })
 
   return (
     <div className="role-card">
