@@ -42,8 +42,11 @@ export default function Dashboard() {
 
   const domains = ['all', ...new Set(states.map(s => s.entity_id.split('.')[0]))]
   const filtered = filter === 'all' ? states : states.filter(s => s.entity_id.startsWith(filter + '.'))
-  const sensors = filtered.filter(s => ['sensor','binary_sensor','weather'].includes(s.entity_id.split('.')[0]))
-  const devices = filtered.filter(s => ['switch','light','climate','cover','fan','media_player'].includes(s.entity_id.split('.')[0]))
+  const deviceDomains = ['switch','light','climate','cover','fan','media_player','button','input_boolean','input_select']
+  const sensorDomains = ['sensor','binary_sensor','weather']
+  const devices = filtered.filter(s => deviceDomains.includes(s.entity_id.split('.')[0]))
+  const sensors = filtered.filter(s => sensorDomains.includes(s.entity_id.split('.')[0]))
+  const others = filtered.filter(s => !deviceDomains.includes(s.entity_id.split('.')[0]) && !sensorDomains.includes(s.entity_id.split('.')[0]))
 
   return (
     <div className="dash-layout">
@@ -113,6 +116,17 @@ export default function Dashboard() {
             <div className="section-title">Sensori</div>
             <div className="sensors-grid">
               {sensors.map(s => (
+                <SensorCard key={s.entity_id} state={s} />
+              ))}
+            </div>
+          </>
+        )}
+
+        {others.length > 0 && (
+          <>
+            <div className="section-title">Altro</div>
+            <div className="sensors-grid">
+              {others.map(s => (
                 <SensorCard key={s.entity_id} state={s} />
               ))}
             </div>
