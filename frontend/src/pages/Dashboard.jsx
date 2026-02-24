@@ -143,8 +143,18 @@ function DeviceCard({ state, onToggle }) {
   const name = state.attributes.friendly_name || state.entity_id
 
   const toggle = () => {
-    if (domain === 'switch' || domain === 'light') {
+    if (domain === 'switch' || domain === 'light' || domain === 'input_boolean') {
       onToggle(domain, isOn ? 'turn_off' : 'turn_on', state.entity_id)
+    } else if (domain === 'button') {
+      onToggle(domain, 'press', state.entity_id)
+    } else if (domain === 'cover') {
+      onToggle(domain, isOn ? 'close_cover' : 'open_cover', state.entity_id)
+    } else if (domain === 'climate') {
+      onToggle(domain, 'toggle', state.entity_id)
+    } else if (domain === 'fan') {
+      onToggle(domain, isOn ? 'turn_off' : 'turn_on', state.entity_id)
+    } else if (domain === 'media_player') {
+      onToggle(domain, isOn ? 'media_pause' : 'media_play', state.entity_id)
     }
   }
 
