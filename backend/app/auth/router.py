@@ -9,9 +9,10 @@ from app.db import get_db
 from app.models import User, Session, UserStatus
 from app.auth.service import (hash_password, verify_password,
                                create_access_token, create_refresh_token,
-                               decode_access_token)
+                               decode_access_token, validate_password)
 from app.config import settings
 from app.limiter import limiter
+from app.security_log import log_login_ok, log_login_fail, log_register, log_password_change
 from fastapi import Request
 
 router = APIRouter()
@@ -34,6 +35,9 @@ class TokenResponse(BaseModel):
 @router.post("/register", status_code=201)
 @limiter.limit("5/minute")
 async def register(request: Request, data: RegisterRequest, db: AsyncSession = Depends(get_db)):
+    err = validate_password(data.password)
+    if err:
+        raise HTTPException(400, err)
     existing = await db.execute(select(User).where(User.email == data.email))
     if existing.scalar_one_or_none():
         raise HTTPException(400, "Email già registrata")
@@ -46,6 +50,7 @@ async def register(request: Request, data: RegisterRequest, db: AsyncSession = D
     )
     db.add(user)
     await db.commit()
+    log_register(data.email, request.client.host)
     return {"message": "Registrazione completata. Attendi l'approvazione dell'amministratore."}
 
 @router.post("/login", response_model=TokenResponse)
@@ -54,8 +59,10 @@ async def login(request: Request, data: LoginRequest, response: Response, db: As
     result = await db.execute(select(User).where(User.email == data.email))
     user = result.scalar_one_or_none()
     if not user or not verify_password(data.password, user.hashed_password):
+        log_login_fail(data.email, request.client.host)
         raise HTTPException(401, "Credenziali non valide")
     if user.status != UserStatus.active:
+        log_login_fail(data.email, request.client.host)
         raise HTTPException(403, "Account non ancora approvato o revocato")
     refresh_token = create_refresh_token()
     expires = datetime.utcnow() + timedelta(days=settings.REFRESH_TOKEN_EXPIRE_DAYS)
@@ -67,6 +74,7 @@ async def login(request: Request, data: LoginRequest, response: Response, db: As
         httponly=True, secure=True, samesite="strict",
         max_age=settings.REFRESH_TOKEN_EXPIRE_DAYS * 86400
     )
+    log_login_ok(user.email, request.client.host)
     return {"access_token": create_access_token(str(user.id), user.is_admin)}
 
 @router.post("/refresh", response_model=TokenResponse)
@@ -83,6 +91,7 @@ async def refresh(response: Response, refresh_token: Optional[str] = Cookie(None
     user = await db.get(User, session.user_id)
     if not user or user.status != UserStatus.active:
         raise HTTPException(403, "Utente non attivo")
+    log_login_ok(user.email, request.client.host)
     return {"access_token": create_access_token(str(user.id), user.is_admin)}
 
 @router.post("/logout")
@@ -132,6 +141,9 @@ async def change_password(data: ChangePasswordRequest,
         raise HTTPException(404, "Utente non trovato")
     if not verify_password(data.current_password, user.hashed_password):
         raise HTTPException(400, "Password attuale non corretta")
+    err = validate_password(data.new_password)
+    if err:
+        raise HTTPException(400, err)
     user.hashed_password = hash_password(data.new_password)
     # Revoca tutte le sessioni attive
     from sqlalchemy import select as sa_select

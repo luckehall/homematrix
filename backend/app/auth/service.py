@@ -27,3 +27,13 @@ def decode_access_token(token: str) -> dict:
         return jwt.decode(token, settings.JWT_SECRET, algorithms=[settings.JWT_ALGORITHM])
     except JWTError:
         return None
+
+def validate_password(password: str) -> str:
+    """Valida la password e restituisce un messaggio di errore o stringa vuota."""
+    if len(password) < 8:
+        return "La password deve essere di almeno 8 caratteri"
+    if not any(c.isupper() for c in password):
+        return "La password deve contenere almeno una lettera maiuscola"
+    if not any(c.isdigit() for c in password):
+        return "La password deve contenere almeno un numero"
+    return ""

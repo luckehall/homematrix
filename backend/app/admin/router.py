@@ -10,6 +10,7 @@ from app.models import User, UserStatus, HAHost, Role, UserRole, RolePermission
 from app.auth.router import require_admin
 from app.auth.service import hash_password
 from app.crypto import encrypt, decrypt
+from app.security_log import log_admin_action
 
 router = APIRouter()
 
@@ -71,6 +72,7 @@ async def approve_user(user_id: str, db: AsyncSession = Depends(get_db),
     user.status = UserStatus.active
     user.approved_at = datetime.utcnow()
     await db.commit()
+    log_admin_action(admin.email, "APPROVE_USER", user.email)
     return {"message": f"Utente {user.email} approvato"}
 
 @router.post("/users/{user_id}/revoke")
@@ -81,6 +83,7 @@ async def revoke_user(user_id: str, db: AsyncSession = Depends(get_db),
         raise HTTPException(404, "Utente non trovato")
     user.status = UserStatus.revoked
     await db.commit()
+    log_admin_action(admin.email, "REVOKE_USER", user.email)
     return {"message": f"Utente {user.email} revocato"}
 
 @router.post("/users/{user_id}/reset-password")
@@ -169,6 +172,7 @@ async def create_host(data: HAHostCreate, db: AsyncSession = Depends(get_db),
     )
     db.add(host)
     await db.commit()
+    log_admin_action(admin.email, "CREATE_HOST", data.name)
     return {"message": f"Host '{data.name}' aggiunto", "id": str(host.id)}
 
 @router.delete("/hosts/{host_id}")
