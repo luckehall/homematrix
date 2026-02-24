@@ -96,12 +96,16 @@ async def call_service(host_id: str, domain: str, service: str,
     if allowed_domains and domain not in allowed_domains:
         raise HTTPException(403, f"Dominio '{domain}' non autorizzato")
     body = await request.json() if await request.body() else {}
-    if allowed_entities and body.get("entity_id") and body["entity_id"] not in allowed_entities:
-        raise HTTPException(403, "Entità non autorizzata")
+    # Controlla entità specifica solo se allowed_entities è impostato E allowed_domains non copre già il dominio
+    if allowed_entities and body.get("entity_id"):
+        entity_domain = body["entity_id"].split(".")[0]
+        if body["entity_id"] not in allowed_entities:
+            if not allowed_domains or entity_domain not in allowed_domains:
+                raise HTTPException(403, "Entità non autorizzata")
     async with httpx.AsyncClient(verify=True, timeout=10) as client:
         resp = await client.post(
             f"{host.base_url}/api/services/{domain}/{service}",
-            headers={"Authorization": f"Bearer {host.token}",
+            headers={"Authorization": f"Bearer {decrypt(host.token)}",
                      "Content-Type": "application/json"},
             json=body)
     if resp.status_code not in (200, 201):
