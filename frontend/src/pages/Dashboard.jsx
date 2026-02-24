@@ -24,9 +24,17 @@ export default function Dashboard() {
     if (!selectedHost) return
     setLoading(true)
     api.get(`/api/hosts/${selectedHost.id}/states`)
-      .then(r => setStates(r.data))
+      .then(r => setStates([...r.data]))
       .catch(() => {})
       .finally(() => setLoading(false))
+
+    const interval = setInterval(() => {
+      api.get(`/api/hosts/${selectedHost.id}/states`)
+        .then(r => setStates([...r.data]))
+        .catch(() => {})
+    }, 3000)
+
+    return () => clearInterval(interval)
   }, [selectedHost])
 
   const handleLogout = async () => {
