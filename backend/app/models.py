@@ -21,6 +21,9 @@ class User(Base):
     status: Mapped[UserStatus]  = mapped_column(Enum(UserStatus), default=UserStatus.pending)
     is_admin: Mapped[bool]      = mapped_column(Boolean, default=False)
     request_reason: Mapped[str] = mapped_column(Text, nullable=True)
+    totp_secret: Mapped[str]  = mapped_column(String(64), nullable=True)
+    totp_enabled: Mapped[bool]          = mapped_column(Boolean, default=False)
+    require_2fa: Mapped[bool]           = mapped_column(Boolean, default=False)
     created_at: Mapped[datetime]= mapped_column(DateTime, default=datetime.utcnow)
     approved_at: Mapped[datetime]= mapped_column(DateTime, nullable=True)
 
@@ -58,6 +61,7 @@ class Role(Base):
     name: Mapped[str]           = mapped_column(String(100), unique=True, nullable=False)
     description: Mapped[str]    = mapped_column(Text, nullable=True)
     created_at: Mapped[datetime]= mapped_column(DateTime, default=datetime.utcnow)
+    require_2fa: Mapped[bool]    = mapped_column(Boolean, default=False)
 
     permissions: Mapped[list["RolePermission"]] = relationship(back_populates="role", cascade="all, delete")
     users: Mapped[list["UserRole"]] = relationship(back_populates="role", cascade="all, delete")
@@ -86,3 +90,16 @@ class RolePermission(Base):
 
     role: Mapped["Role"] = relationship(back_populates="permissions")
     host: Mapped["HAHost"] = relationship()
+
+class TrustedDevice(Base):
+    __tablename__ = "trusted_devices"
+
+    id: Mapped[uuid.UUID]       = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    user_id: Mapped[uuid.UUID]  = mapped_column(UUID(as_uuid=True), ForeignKey("users.id"), nullable=False)
+    device_token: Mapped[str]   = mapped_column(String(128), unique=True, nullable=False)
+    device_name: Mapped[str]    = mapped_column(String(200), nullable=True)
+    created_at: Mapped[datetime]= mapped_column(DateTime, default=datetime.utcnow)
+    last_seen: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
+    expires_at: Mapped[datetime]= mapped_column(DateTime, nullable=False)
+
+    user: Mapped["User"] = relationship()

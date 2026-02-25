@@ -91,7 +91,6 @@ async def refresh(response: Response, refresh_token: Optional[str] = Cookie(None
     user = await db.get(User, session.user_id)
     if not user or user.status != UserStatus.active:
         raise HTTPException(403, "Utente non attivo")
-    log_login_ok(user.email, request.client.host)
     return {"access_token": create_access_token(str(user.id), user.is_admin)}
 
 @router.post("/logout")

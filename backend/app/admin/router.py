@@ -34,6 +34,7 @@ async def list_users(db: AsyncSession = Depends(get_db),
     users = result.scalars().all()
     return [{"id": str(u.id), "email": u.email, "full_name": u.full_name,
              "status": u.status, "is_admin": u.is_admin,
+             "require_2fa": u.require_2fa,
              "request_reason": u.request_reason,
              "created_at": u.created_at} for u in users]
 
@@ -202,6 +203,7 @@ async def toggle_host(host_id: str, db: AsyncSession = Depends(get_db),
 class RoleCreate(BaseModel):
     name: str
     description: Optional[str] = None
+    require_2fa: bool = False
 
 class PermissionCreate(BaseModel):
     host_id: str
@@ -220,7 +222,7 @@ async def list_roles(db: AsyncSession = Depends(get_db),
         perms = perms_result.scalars().all()
         out.append({
             "id": str(r.id), "name": r.name, "description": r.description,
-            "created_at": r.created_at,
+            "require_2fa": r.require_2fa, "created_at": r.created_at,
             "permissions": [{
                 "id": str(p.id),
                 "host_id": str(p.host_id),
@@ -233,7 +235,7 @@ async def list_roles(db: AsyncSession = Depends(get_db),
 @router.post("/roles", status_code=201)
 async def create_role(data: RoleCreate, db: AsyncSession = Depends(get_db),
                       admin: User = Depends(require_admin)):
-    role = Role(name=data.name, description=data.description)
+    role = Role(name=data.name, description=data.description, require_2fa=data.require_2fa)
     db.add(role)
     await db.commit()
     return {"message": f"Ruolo '{data.name}' creato", "id": str(role.id)}
@@ -293,3 +295,38 @@ async def remove_role(role_id: str, user_id: str,
     await db.delete(ur)
     await db.commit()
     return {"message": "Ruolo rimosso"}
+
+@router.patch("/roles/{role_id}/require-2fa")
+async def toggle_require_2fa(role_id: str, db: AsyncSession = Depends(get_db),
+                              admin: User = Depends(require_admin)):
+    role = await db.get(Role, role_id)
+    if not role:
+        raise HTTPException(404, "Ruolo non trovato")
+    role.require_2fa = not role.require_2fa
+    await db.commit()
+    log_admin_action(admin.email, "TOGGLE_2FA_REQUIRED", f"{role.name}={role.require_2fa}")
+    return {"message": f"2FA obbligatorio per '{role.name}': {role.require_2fa}"}
+
+@router.post("/users/{user_id}/remove-admin")
+async def remove_admin(user_id: str, db: AsyncSession = Depends(get_db),
+                       admin: User = Depends(require_admin)):
+    user = await db.get(User, user_id)
+    if not user:
+        raise HTTPException(404, "Utente non trovato")
+    if str(user.id) == str(admin.id):
+        raise HTTPException(400, "Non puoi revocare i tuoi stessi privilegi admin")
+    user.is_admin = False
+    await db.commit()
+    log_admin_action(admin.email, "REMOVE_ADMIN", user.email)
+    return {"message": f"{user.email} non è più amministratore"}
+
+@router.post("/users/{user_id}/require-2fa")
+async def set_require_2fa(user_id: str, db: AsyncSession = Depends(get_db),
+                          admin: User = Depends(require_admin)):
+    user = await db.get(User, user_id)
+    if not user:
+        raise HTTPException(404, "Utente non trovato")
+    user.require_2fa = not user.require_2fa
+    await db.commit()
+    log_admin_action(admin.email, "TOGGLE_USER_2FA", f"{user.email}={user.require_2fa}")
+    return {"message": f"2FA obbligatorio per {user.email}: {user.require_2fa}", "require_2fa": user.require_2fa}

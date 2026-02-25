@@ -1,9 +1,11 @@
 import { useState, useEffect, useRef } from 'react'
 import { useNavigate } from 'react-router-dom'
+import { useAuth } from '../context/AuthContext'
 import api from '../api/client'
 import './Admin.css'
 
 export default function Admin() {
+  const { user: currentUser } = useAuth()
   const navigate = useNavigate()
   const [tab, setTab] = useState('pending')
   const [pending, setPending] = useState([])
@@ -44,6 +46,8 @@ export default function Admin() {
   const approve  = async id => { await api.post(`/api/admin/users/${id}/approve`); notify('Utente approvato ✓'); load() }
   const revoke   = async id => { await api.post(`/api/admin/users/${id}/revoke`); notify('Utente revocato'); load() }
   const mkAdmin  = async id => { await api.post(`/api/admin/users/${id}/make-admin`); notify('Utente promosso admin ✓'); load() }
+  const rmAdmin  = async id => { await api.post(`/api/admin/users/${id}/remove-admin`); notify('Privilegi admin revocati'); load() }
+  const toggle2fa = async id => { const r = await api.post(`/api/admin/users/${id}/require-2fa`); notify(r.data.message); load() }
 
   const createUser = async e => {
     e.preventDefault()
@@ -96,6 +100,12 @@ export default function Admin() {
     await api.post('/api/admin/roles', newRole)
     notify(`Ruolo '${newRole.name}' creato ✓`)
     setNewRole({ name:'', description:'' })
+    load()
+  }
+
+  const toggleRole2fa = async (roleId) => {
+    const r = await api.patch(`/api/admin/roles/${roleId}/require-2fa`)
+    notify(r.data.message)
     load()
   }
 
@@ -192,6 +202,10 @@ export default function Admin() {
                   )}
                   {!u.is_admin && (
                     <button className="btn-toggle" onClick={() => mkAdmin(u.id)}>→ Admin</button>
+                  )}
+                  <button className={`btn-2fa btn-xs ${u.require_2fa ? 'active' : ''}`} onClick={() => toggle2fa(u.id)}>{u.require_2fa ? '🔐 2FA ON' : '🔓 2FA OFF'}</button>
+                  {u.is_admin && String(u.id) !== String(currentUser?.id) && (
+                    <button className="btn-deny btn-xs" onClick={() => rmAdmin(u.id)}>✕ Admin</button>
                   )}
                   <div className="assign-row">
                     <select className="select-sm"
@@ -300,7 +314,7 @@ export default function Admin() {
   )
 }
 
-function RoleCard({ role, hosts, newPerm, onPermChange, onAddPerm, onDelPerm }) {
+function RoleCard({ role, hosts, newPerm, onPermChange, onAddPerm, onDelPerm, onToggle2fa }) {
   const [haData, setHaData] = useState({ domains: [], entities: [] })
   const [loadingHa, setLoadingHa] = useState(false)
   const [domainSearch, setDomainSearch] = useState('')

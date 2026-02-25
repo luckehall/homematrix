@@ -9,16 +9,29 @@ export function AuthProvider({ children }) {
 
   // Auto-login: tenta refresh al caricamento
   useEffect(() => {
-    axios.post('https://homematrix.iotzator.com/api/auth/refresh',
-      {}, { withCredentials: true })
-      .then(({ data }) => {
+    const init = async () => {
+      try {
+        const { data } = await axios.post('https://homematrix.iotzator.com/api/auth/refresh',
+          {}, { withCredentials: true })
         localStorage.setItem('access_token', data.access_token)
-        const payload = JSON.parse(atob(data.access_token.split('.')[1]))
-        setUser({ id: payload.sub, is_admin: payload.is_admin })
-      })
-      .catch(() => {})
-      .finally(() => setLoading(false))
+        const payload = JSON.parse(atob(data.access_token.split(".")[1]))
+        const token = data.access_token
+        const totp = await axios.get('https://homematrix.iotzator.com/api/auth/2fa/status',
+          { headers: { Authorization: `Bearer ${token}` } }).then(r => r.data).catch(() => ({ enabled: true, required: false }))
+        setUser({ id: payload.sub, is_admin: payload.is_admin, totp_required: totp.required, totp_enabled: totp.enabled })
+      } catch {}
+      finally { setLoading(false) }
+    }
+    init()
   }, [])
+
+  const check2fa = async (token) => {
+    try {
+      const res = await axios.get('https://homematrix.iotzator.com/api/auth/2fa/status',
+        { headers: { Authorization: `Bearer ${token}` } })
+      return res.data
+    } catch { return { enabled: true, required: false } }
+  }
 
   const login = async (email, password) => {
     const { data } = await axios.post(
@@ -27,7 +40,8 @@ export function AuthProvider({ children }) {
     )
     localStorage.setItem('access_token', data.access_token)
     const payload = JSON.parse(atob(data.access_token.split('.')[1]))
-    setUser({ id: payload.sub, is_admin: payload.is_admin })
+    const totp = await check2fa(data.access_token)
+    setUser({ id: payload.sub, is_admin: payload.is_admin, totp_required: totp.required, totp_enabled: totp.enabled })
   }
 
   const logout = async () => {

@@ -114,3 +114,6 @@ body { background:var(--bg); color:var(--text); font-family:'Syne',sans-serif; }
 .picker-item.selected { background:rgba(0,229,192,.08); color:var(--accent); }
 .picker-check { width:14px; font-size:10px; color:var(--accent); flex-shrink:0; }
 .picker-more { font-size:11px; color:var(--muted); text-align:center; padding:8px; font-family:'DM Mono',monospace; }
+.btn-2fa { padding:6px 12px; border-radius:8px; border:1px solid var(--border); background:var(--surface2); color:var(--muted); font-size:11px; cursor:pointer; font-family:'DM Mono',monospace; transition:all .2s; }
+.btn-2fa.active { background:rgba(0,229,192,.1); border-color:rgba(0,229,192,.3); color:var(--accent); }
+.btn-2fa:hover { border-color:rgba(255,255,255,.2); color:var(--text); }

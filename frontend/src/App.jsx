@@ -9,7 +9,12 @@ import Profile from './pages/Profile'
 function PrivateRoute({ children }) {
   const { user, loading } = useAuth()
   if (loading) return <div className="loading">Caricamento...</div>
-  return user ? children : <Navigate to="/" />
+  if (!user) return <Navigate to="/" />
+  // Se 2FA obbligatorio e non ancora attivato, forza il profilo
+  if (user.totp_required && !user.totp_enabled && window.location.pathname !== '/profile') {
+    return <Navigate to="/profile" state={{ force2fa: true }} />
+  }
+  return children
 }
 
 function AdminRoute({ children }) {
