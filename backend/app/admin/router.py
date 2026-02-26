@@ -176,6 +176,29 @@ async def create_host(data: HAHostCreate, db: AsyncSession = Depends(get_db),
     log_admin_action(admin.email, "CREATE_HOST", data.name)
     return {"message": f"Host '{data.name}' aggiunto", "id": str(host.id)}
 
+class HAHostUpdate(BaseModel):
+    name: Optional[str] = None
+    base_url: Optional[str] = None
+    token: Optional[str] = None
+    description: Optional[str] = None
+    active: Optional[bool] = None
+
+@router.patch("/hosts/{host_id}")
+async def update_host(host_id: str, data: HAHostUpdate,
+                      db: AsyncSession = Depends(get_db),
+                      admin: User = Depends(require_admin)):
+    host = await db.get(HAHost, host_id)
+    if not host:
+        raise HTTPException(404, "Host non trovato")
+    if data.name is not None: host.name = data.name
+    if data.base_url is not None: host.base_url = data.base_url.rstrip("/")
+    if data.token is not None: host.token = encrypt(data.token)
+    if data.description is not None: host.description = data.description
+    if data.active is not None: host.active = data.active
+    await db.commit()
+    log_admin_action(admin.email, "UPDATE_HOST", host.name)
+    return {"message": f"Host '{host.name}' aggiornato"}
+
 @router.delete("/hosts/{host_id}")
 async def delete_host(host_id: str, db: AsyncSession = Depends(get_db),
                       admin: User = Depends(require_admin)):

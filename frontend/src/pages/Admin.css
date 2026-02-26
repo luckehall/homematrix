@@ -117,3 +117,7 @@ body { background:var(--bg); color:var(--text); font-family:'Syne',sans-serif; }
 .btn-2fa { padding:6px 12px; border-radius:8px; border:1px solid var(--border); background:var(--surface2); color:var(--muted); font-size:11px; cursor:pointer; font-family:'DM Mono',monospace; transition:all .2s; }
 .btn-2fa.active { background:rgba(0,229,192,.1); border-color:rgba(0,229,192,.3); color:var(--accent); }
 .btn-2fa:hover { border-color:rgba(255,255,255,.2); color:var(--text); }
+.host-edit-form { width:100%; padding:8px 0; }
+.host-edit-form .field { margin-bottom:10px; }
+.host-edit-form input { width:100%; background:var(--surface2); border:1px solid var(--border); border-radius:8px; padding:10px 12px; color:var(--text); font-size:13px; outline:none; }
+.host-edit-form input:focus { border-color:var(--accent); }

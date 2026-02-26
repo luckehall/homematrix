@@ -92,6 +92,15 @@ export default function Admin() {
     load()
   }
 
+  const [editHost, setEditHost] = useState(null)
+  const [editHostData, setEditHostData] = useState({})
+  const updateHost = async id => {
+    await api.patch(`/api/admin/hosts/${id}`, editHostData)
+    notify('Host aggiornato ✓')
+    setEditHost(null)
+    setEditHostData({})
+    load()
+  }
   const toggleHost  = async id => { await api.patch(`/api/admin/hosts/${id}/toggle`); load() }
   const deleteHost  = async id => { if (!confirm('Eliminare?')) return; await api.delete(`/api/admin/hosts/${id}`); load() }
 
@@ -270,17 +279,35 @@ export default function Admin() {
             <div className="cards-grid" style={{marginTop:'24px'}}>
               {hosts.map(h => (
                 <div key={h.id} className={`host-card ${h.active?'active':''}`}>
-                  <div className="host-icon">🏠</div>
-                  <div className="host-info">
-                    <div className="host-name">{h.name}</div>
-                    <div className="host-url">{h.base_url}</div>
-                    {h.description && <div className="host-desc">{h.description}</div>}
-                  </div>
-                  <div className="host-actions">
-                    <span className={`status-pill ${h.active?'status-active':'status-revoked'}`}>{h.active?'attivo':'disattivo'}</span>
-                    <button className="btn-toggle" onClick={() => toggleHost(h.id)}>{h.active?'Disattiva':'Attiva'}</button>
-                    <button className="btn-deny" onClick={() => deleteHost(h.id)}>Elimina</button>
-                  </div>
+                  {editHost === h.id ? (
+                    <div className="host-edit-form">
+                      <div className="form-row">
+                        <div className="field"><label>Nome</label><input defaultValue={h.name} onChange={e=>setEditHostData({...editHostData,name:e.target.value})} /></div>
+                        <div className="field"><label>URL</label><input defaultValue={h.base_url} onChange={e=>setEditHostData({...editHostData,base_url:e.target.value})} /></div>
+                      </div>
+                      <div className="field"><label>Nuovo Token (lascia vuoto per non modificare)</label><input placeholder="eyJhbGci..." onChange={e=>setEditHostData({...editHostData,token:e.target.value})} /></div>
+                      <div className="field"><label>Descrizione</label><input defaultValue={h.description} onChange={e=>setEditHostData({...editHostData,description:e.target.value})} /></div>
+                      <div className="host-actions" style={{marginTop:'12px'}}>
+                        <button className="btn-approve" onClick={() => updateHost(h.id)}>✓ Salva</button>
+                        <button className="btn-toggle" onClick={() => { setEditHost(null); setEditHostData({}) }}>Annulla</button>
+                      </div>
+                    </div>
+                  ) : (
+                    <>
+                      <div className="host-icon">🏠</div>
+                      <div className="host-info">
+                        <div className="host-name">{h.name}</div>
+                        <div className="host-url">{h.base_url}</div>
+                        {h.description && <div className="host-desc">{h.description}</div>}
+                      </div>
+                      <div className="host-actions">
+                        <span className={`status-pill ${h.active?'status-active':'status-revoked'}`}>{h.active?'attivo':'disattivo'}</span>
+                        <button className="btn-toggle" onClick={() => { setEditHost(h.id); setEditHostData({}) }}>✎ Modifica</button>
+                        <button className="btn-toggle" onClick={() => toggleHost(h.id)}>{h.active?'Disattiva':'Attiva'}</button>
+                        <button className="btn-deny" onClick={() => deleteHost(h.id)}>Elimina</button>
+                      </div>
+                    </>
+                  )}
                 </div>
               ))}
             </div>
