@@ -4,6 +4,43 @@ import { useAuth } from '../context/AuthContext'
 import api from '../api/client'
 import './Admin.css'
 
+
+function WidgetAddRow({ value, onChange, entities, onLoadEntities, search, onSearchChange, onAdd }) {
+  const [open, setOpen] = useState(false)
+  const filtered = entities
+    ? entities.filter(e => !search || e.entity_id.includes(search) || e.friendly_name.toLowerCase().includes(search.toLowerCase())).slice(0,8)
+    : []
+  return (
+    <div className="widget-add-row">
+      <div className="entity-autocomplete">
+        <input placeholder="Cerca entità..." value={search}
+          onFocus={() => { setOpen(true); if (!entities) onLoadEntities() }}
+          onBlur={() => setTimeout(()=>setOpen(false),150)}
+          onChange={e => { onSearchChange(e.target.value); onChange({...value,entity_id:e.target.value}) }} />
+        {open && filtered.length > 0 && (
+          <div className="entity-dropdown">
+            {filtered.map(e => (
+              <div key={e.entity_id} className="entity-option"
+                onMouseDown={ev=>ev.preventDefault()}
+                onClick={()=>{ onChange({...value,entity_id:e.entity_id,label:value.label||e.friendly_name}); onSearchChange(e.entity_id); setOpen(false) }}>
+                <span className="entity-option-id">{e.entity_id}</span>
+                <span className="entity-option-name">{e.friendly_name}</span>
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
+      <input placeholder="Label" style={{width:'130px'}} value={value.label||''} onChange={e=>onChange({...value,label:e.target.value})} />
+      <input placeholder="Icona" style={{width:'65px'}} value={value.icon||''} onChange={e=>onChange({...value,icon:e.target.value})} />
+      <input placeholder="#colore" style={{width:'95px'}} value={value.color||''} onChange={e=>onChange({...value,color:e.target.value})} />
+      <select value={value.size||'medium'} onChange={e=>onChange({...value,size:e.target.value})}>
+        <option value="small">Piccolo</option><option value="medium">Medio</option><option value="large">Grande</option>
+      </select>
+      <button className="btn-approve btn-xs" onClick={onAdd}>+ Widget</button>
+    </div>
+  )
+}
+
 export default function Admin() {
   const { user: currentUser } = useAuth()
   const navigate = useNavigate()
@@ -16,21 +53,8 @@ export default function Admin() {
   const [newView, setNewView] = useState({role_id:"", host_id:"", title:""})
   const [newWidget, setNewWidget] = useState({})
   const [editingWidget, setEditingWidget] = useState(null)
-  const [viewEntities, setViewEntities] = useState({}) // {viewId: [{entity_id, domain, friendly_name}]}
-  const [entitySearch, setEntitySearch] = useState({}) // {viewId: searchString}
-
-  const loadViewEntities = async (viewId, hostId) => {
-    if (viewEntities[viewId]) return
-    try {
-      const r = await api.get(`/api/hosts/${hostId}/domains`)
-      const entities = r.data.entities.map(e => ({
-        entity_id: e.entity_id,
-        domain: e.entity_id.split('.')[0],
-        friendly_name: e.attributes?.friendly_name || e.entity_id
-      }))
-      setViewEntities(prev => ({...prev, [viewId]: entities}))
-    } catch {}
-  }
+  const [viewEntities, setViewEntities] = useState({})
+  const [entitySearch, setEntitySearch] = useState({})
   const [userRoles, setUserRoles] = useState({}) // { userId: [{assignment_id, role_id, role_name}] }
   const [msg, setMsg] = useState('')
 
@@ -41,6 +65,18 @@ export default function Admin() {
   const [assignRole, setAssignRole] = useState({})
   const [newPerm, setNewPerm] = useState({})
 
+  const loadViewEntities = async (viewId, hostId) => {
+    if (viewEntities[viewId]) return
+    try {
+      const r = await api.get(`/api/hosts/${hostId}/domains`)
+      const entities = r.data.entities.map(e => ({
+        entity_id: e.entity_id,
+        friendly_name: e.attributes?.friendly_name || e.entity_id
+      }))
+      setViewEntities(prev => ({...prev, [viewId]: entities}))
+    } catch(e) { console.error(e) }
+  }
+
   const loadViews = async () => {
     const r = await api.get('/api/admin/views')
     setViews(r.data)
@@ -50,7 +86,7 @@ export default function Admin() {
     e.preventDefault()
     await api.post('/api/admin/views', newView)
     notify('Vista creata ✓')
-    setNewView({role_id:'', host_id:'', title:''})
+    setNewView({role_id:"", host_id:"", title:""})
     loadViews()
   }
 
@@ -61,12 +97,13 @@ export default function Admin() {
     loadViews()
   }
 
-  const addWidget = async (viewId) => {
+  const addWidget = async viewId => {
     const w = newWidget[viewId] || {}
     if (!w.entity_id) return
     await api.post(`/api/admin/views/${viewId}/widgets`, w)
     notify('Widget aggiunto ✓')
-    setNewWidget({...newWidget, [viewId]: {}})
+    setNewWidget(prev => ({...prev, [viewId]: {}}))
+    setEntitySearch(prev => ({...prev, [viewId]: ''}))
     loadViews()
   }
 
@@ -406,91 +443,50 @@ export default function Admin() {
                 <div className="view-header">
                   <div>
                     <div className="view-title">{view.title}</div>
-                    <div className="view-meta">
-                      /view/{view.slug} · {roles.find(r=>r.id===view.role_id)?.name || view.role_id}
-                    </div>
+                    <div className="view-meta">/view/{view.slug} · {roles.find(r=>r.id===view.role_id)?.name || ''}</div>
                   </div>
                   <div className="host-actions">
                     <a className="btn-toggle" href={`/view/${view.slug}`} target="_blank">↗ Apri</a>
                     <button className="btn-deny" onClick={()=>deleteView(view.id)}>Elimina</button>
                   </div>
                 </div>
-
                 <div className="widgets-list">
                   {view.widgets.map(w => (
                     <div key={w.id} className="widget-row">
                       {editingWidget?.widgetId === w.id ? (
                         <div className="widget-edit-row">
-                          <input placeholder="Label" defaultValue={w.label || ''} onChange={e=>setEditingWidget({...editingWidget, label:e.target.value})} />
-                          <input placeholder="Icona 🏠" defaultValue={w.icon || ''} onChange={e=>setEditingWidget({...editingWidget, icon:e.target.value})} style={{width:'80px'}} />
-                          <input placeholder="Colore #hex" defaultValue={w.color || ''} onChange={e=>setEditingWidget({...editingWidget, color:e.target.value})} style={{width:'110px'}} />
-                          <select defaultValue={w.size} onChange={e=>setEditingWidget({...editingWidget, size:e.target.value})}>
-                            <option value="small">Piccolo</option>
-                            <option value="medium">Medio</option>
-                            <option value="large">Grande</option>
+                          <input placeholder="Label" defaultValue={w.label||''} onChange={e=>setEditingWidget({...editingWidget,label:e.target.value})} />
+                          <input placeholder="Icona" defaultValue={w.icon||''} onChange={e=>setEditingWidget({...editingWidget,icon:e.target.value})} style={{width:'70px'}} />
+                          <input placeholder="#colore" defaultValue={w.color||''} onChange={e=>setEditingWidget({...editingWidget,color:e.target.value})} style={{width:'100px'}} />
+                          <select defaultValue={w.size} onChange={e=>setEditingWidget({...editingWidget,size:e.target.value})}>
+                            <option value="small">Piccolo</option><option value="medium">Medio</option><option value="large">Grande</option>
                           </select>
-                          <button className="btn-approve btn-xs" onClick={()=>updateWidget(view.id, w.id, {label:editingWidget.label, icon:editingWidget.icon, color:editingWidget.color, size:editingWidget.size})}>✓</button>
+                          <button className="btn-approve btn-xs" onClick={()=>updateWidget(view.id,w.id,{label:editingWidget.label,icon:editingWidget.icon,color:editingWidget.color,size:editingWidget.size})}>✓</button>
                           <button className="btn-toggle btn-xs" onClick={()=>setEditingWidget(null)}>✕</button>
                         </div>
                       ) : (
                         <>
-                          <span className="widget-icon">{w.icon || '▪'}</span>
+                          <span className="widget-icon">{w.icon||'▪'}</span>
                           <span className="widget-entity">{w.entity_id}</span>
-                          <span className="widget-label">{w.label || '—'}</span>
+                          <span className="widget-label">{w.label||'—'}</span>
                           <span className={`widget-size size-${w.size}`}>{w.size}</span>
                           {w.color && <span className="widget-color-dot" style={{background:w.color}} />}
-                          <button className="btn-toggle btn-xs" onClick={()=>setEditingWidget({widgetId:w.id, label:w.label, icon:w.icon, color:w.color, size:w.size})}>✎</button>
-                          <button className="btn-deny btn-xs" onClick={()=>deleteWidget(view.id, w.id)}>✕</button>
+                          <button className="btn-toggle btn-xs" onClick={()=>setEditingWidget({widgetId:w.id,label:w.label,icon:w.icon,color:w.color,size:w.size})}>✎</button>
+                          <button className="btn-deny btn-xs" onClick={()=>deleteWidget(view.id,w.id)}>✕</button>
                         </>
                       )}
                     </div>
                   ))}
                 </div>
-
-                <div className="widget-add-row">
-                  <div className="entity-autocomplete" style={{flex:2,position:'relative'}}>
-                    <input placeholder="Cerca entità..."
-                      value={entitySearch[view.id] !== undefined ? entitySearch[view.id] : (newWidget[view.id]?.entity_id || '')}
-                      onFocus={() => loadViewEntities(view.id, view.host_id)}
-                      onChange={e => {
-                        setEntitySearch({...entitySearch, [view.id]: e.target.value})
-                        setNewWidget({...newWidget, [view.id]:{...newWidget[view.id], entity_id: e.target.value}})
-                      }} />
-                    {entitySearch[view.id] !== undefined && entitySearch[view.id].length > 0 && viewEntities[view.id] && (
-                      <div className="entity-dropdown">
-                        {viewEntities[view.id]
-                          .filter(e => e.entity_id.includes(entitySearch[view.id]) || e.friendly_name.toLowerCase().includes(entitySearch[view.id].toLowerCase()))
-                          .slice(0, 8)
-                          .map(e => (
-                            <div key={e.entity_id} className="entity-option"
-                              onClick={() => {
-                                setNewWidget({...newWidget, [view.id]:{...newWidget[view.id], entity_id: e.entity_id, label: newWidget[view.id]?.label || e.friendly_name}})
-                                setEntitySearch({...entitySearch, [view.id]: undefined})
-                              }}>
-                              <span className="entity-option-id">{e.entity_id}</span>
-                              <span className="entity-option-name">{e.friendly_name}</span>
-                            </div>
-                          ))}
-                      </div>
-                    )}
-                  </div>
-                  <input placeholder="Label" style={{width:'140px'}}
-                    value={newWidget[view.id]?.label || ''}
-                    onChange={e=>setNewWidget({...newWidget, [view.id]:{...newWidget[view.id], label:e.target.value}})} />
-                  <input placeholder="Icona" style={{width:'70px'}}
-                    value={newWidget[view.id]?.icon || ''}
-                    onChange={e=>setNewWidget({...newWidget, [view.id]:{...newWidget[view.id], icon:e.target.value}})} />
-                  <input placeholder="#colore" style={{width:'100px'}}
-                    value={newWidget[view.id]?.color || ''}
-                    onChange={e=>setNewWidget({...newWidget, [view.id]:{...newWidget[view.id], color:e.target.value}})} />
-                  <select value={newWidget[view.id]?.size || 'medium'}
-                    onChange={e=>setNewWidget({...newWidget, [view.id]:{...newWidget[view.id], size:e.target.value}})}>
-                    <option value="small">Piccolo</option>
-                    <option value="medium">Medio</option>
-                    <option value="large">Grande</option>
-                  </select>
-                  <button className="btn-approve btn-xs" onClick={()=>addWidget(view.id)}>+ Widget</button>
-                </div>
+                <WidgetAddRow
+                  value={newWidget[view.id]||{}}
+                  onChange={w=>setNewWidget(prev=>({...prev,[view.id]:w}))}
+                  entities={viewEntities[view.id]}
+                  onLoadEntities={()=>loadViewEntities(view.id,view.host_id)}
+                  search={entitySearch[view.id]||''}
+                  onSearchChange={s=>setEntitySearch(prev=>({...prev,[view.id]:s}))}
+                  onAdd={()=>addWidget(view.id)}
+                />
               </div>
             ))}
           </div>
