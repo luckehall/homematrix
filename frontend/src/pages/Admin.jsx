@@ -22,6 +22,47 @@ export default function Admin() {
   const [assignRole, setAssignRole] = useState({})
   const [newPerm, setNewPerm] = useState({})
 
+  const loadViews = async () => {
+    const r = await api.get('/api/admin/views')
+    setViews(r.data)
+  }
+
+  const createView = async e => {
+    e.preventDefault()
+    await api.post('/api/admin/views', newView)
+    notify('Vista creata ✓')
+    setNewView({role_id:'', host_id:'', title:''})
+    loadViews()
+  }
+
+  const deleteView = async id => {
+    if (!confirm('Eliminare la vista?')) return
+    await api.delete(`/api/admin/views/${id}`)
+    notify('Vista eliminata')
+    loadViews()
+  }
+
+  const addWidget = async (viewId) => {
+    const w = newWidget[viewId] || {}
+    if (!w.entity_id) return
+    await api.post(`/api/admin/views/${viewId}/widgets`, w)
+    notify('Widget aggiunto ✓')
+    setNewWidget({...newWidget, [viewId]: {}})
+    loadViews()
+  }
+
+  const updateWidget = async (viewId, widgetId, data) => {
+    await api.patch(`/api/admin/views/${viewId}/widgets/${widgetId}`, data)
+    notify('Widget aggiornato ✓')
+    setEditingWidget(null)
+    loadViews()
+  }
+
+  const deleteWidget = async (viewId, widgetId) => {
+    await api.delete(`/api/admin/views/${viewId}/widgets/${widgetId}`)
+    loadViews()
+  }
+
   const load = async () => {
     const [p, u, h, r] = await Promise.all([
       api.get('/api/admin/users/pending'),
@@ -312,6 +353,102 @@ export default function Admin() {
               ))}
             </div>
           </>
+        )}
+
+        {tab === 'views' && (
+          <div className="views-admin">
+            <form className="host-form" onSubmit={createView}>
+              <h3>Crea nuova vista</h3>
+              <div className="form-row">
+                <div className="field"><label>Titolo</label>
+                  <input value={newView.title} onChange={e=>setNewView({...newView,title:e.target.value})} required placeholder="es. Ingresso" />
+                </div>
+                <div className="field"><label>Ruolo</label>
+                  <select value={newView.role_id} onChange={e=>setNewView({...newView,role_id:e.target.value})} required>
+                    <option value="">Seleziona ruolo...</option>
+                    {roles.map(r=><option key={r.id} value={r.id}>{r.name}</option>)}
+                  </select>
+                </div>
+                <div className="field"><label>Host HA</label>
+                  <select value={newView.host_id} onChange={e=>setNewView({...newView,host_id:e.target.value})} required>
+                    <option value="">Seleziona host...</option>
+                    {hosts.map(h=><option key={h.id} value={h.id}>{h.name}</option>)}
+                  </select>
+                </div>
+              </div>
+              <button className="btn-primary" type="submit">+ Crea vista</button>
+            </form>
+
+            {views.map(view => (
+              <div key={view.id} className="view-card">
+                <div className="view-header">
+                  <div>
+                    <div className="view-title">{view.title}</div>
+                    <div className="view-meta">
+                      /view/{view.slug} · {roles.find(r=>r.id===view.role_id)?.name || view.role_id}
+                    </div>
+                  </div>
+                  <div className="host-actions">
+                    <a className="btn-toggle" href={`/view/${view.slug}`} target="_blank">↗ Apri</a>
+                    <button className="btn-deny" onClick={()=>deleteView(view.id)}>Elimina</button>
+                  </div>
+                </div>
+
+                <div className="widgets-list">
+                  {view.widgets.map(w => (
+                    <div key={w.id} className="widget-row">
+                      {editingWidget?.widgetId === w.id ? (
+                        <div className="widget-edit-row">
+                          <input placeholder="Label" defaultValue={w.label || ''} onChange={e=>setEditingWidget({...editingWidget, label:e.target.value})} />
+                          <input placeholder="Icona 🏠" defaultValue={w.icon || ''} onChange={e=>setEditingWidget({...editingWidget, icon:e.target.value})} style={{width:'80px'}} />
+                          <input placeholder="Colore #hex" defaultValue={w.color || ''} onChange={e=>setEditingWidget({...editingWidget, color:e.target.value})} style={{width:'110px'}} />
+                          <select defaultValue={w.size} onChange={e=>setEditingWidget({...editingWidget, size:e.target.value})}>
+                            <option value="small">Piccolo</option>
+                            <option value="medium">Medio</option>
+                            <option value="large">Grande</option>
+                          </select>
+                          <button className="btn-approve btn-xs" onClick={()=>updateWidget(view.id, w.id, {label:editingWidget.label, icon:editingWidget.icon, color:editingWidget.color, size:editingWidget.size})}>✓</button>
+                          <button className="btn-toggle btn-xs" onClick={()=>setEditingWidget(null)}>✕</button>
+                        </div>
+                      ) : (
+                        <>
+                          <span className="widget-icon">{w.icon || '▪'}</span>
+                          <span className="widget-entity">{w.entity_id}</span>
+                          <span className="widget-label">{w.label || '—'}</span>
+                          <span className={`widget-size size-${w.size}`}>{w.size}</span>
+                          {w.color && <span className="widget-color-dot" style={{background:w.color}} />}
+                          <button className="btn-toggle btn-xs" onClick={()=>setEditingWidget({widgetId:w.id, label:w.label, icon:w.icon, color:w.color, size:w.size})}>✎</button>
+                          <button className="btn-deny btn-xs" onClick={()=>deleteWidget(view.id, w.id)}>✕</button>
+                        </>
+                      )}
+                    </div>
+                  ))}
+                </div>
+
+                <div className="widget-add-row">
+                  <input placeholder="entity_id (es. switch.luce_ingresso)"
+                    value={newWidget[view.id]?.entity_id || ''}
+                    onChange={e=>setNewWidget({...newWidget, [view.id]:{...newWidget[view.id], entity_id:e.target.value}})} />
+                  <input placeholder="Label" style={{width:'140px'}}
+                    value={newWidget[view.id]?.label || ''}
+                    onChange={e=>setNewWidget({...newWidget, [view.id]:{...newWidget[view.id], label:e.target.value}})} />
+                  <input placeholder="Icona" style={{width:'70px'}}
+                    value={newWidget[view.id]?.icon || ''}
+                    onChange={e=>setNewWidget({...newWidget, [view.id]:{...newWidget[view.id], icon:e.target.value}})} />
+                  <input placeholder="#colore" style={{width:'100px'}}
+                    value={newWidget[view.id]?.color || ''}
+                    onChange={e=>setNewWidget({...newWidget, [view.id]:{...newWidget[view.id], color:e.target.value}})} />
+                  <select value={newWidget[view.id]?.size || 'medium'}
+                    onChange={e=>setNewWidget({...newWidget, [view.id]:{...newWidget[view.id], size:e.target.value}})}>
+                    <option value="small">Piccolo</option>
+                    <option value="medium">Medio</option>
+                    <option value="large">Grande</option>
+                  </select>
+                  <button className="btn-approve btn-xs" onClick={()=>addWidget(view.id)}>+ Widget</button>
+                </div>
+              </div>
+            ))}
+          </div>
         )}
 
         {tab === 'roles' && (

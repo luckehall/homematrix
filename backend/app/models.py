@@ -1,6 +1,6 @@
 import uuid
 from datetime import datetime
-from sqlalchemy import String, Boolean, DateTime, ForeignKey, Text, Enum
+from sqlalchemy import String, Boolean, DateTime, ForeignKey, Text, Enum, Integer
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 from sqlalchemy.dialects.postgresql import UUID
 from app.db import Base
@@ -103,3 +103,30 @@ class TrustedDevice(Base):
     expires_at: Mapped[datetime]= mapped_column(DateTime, nullable=False)
 
     user: Mapped["User"] = relationship()
+
+class CustomView(Base):
+    __tablename__ = "custom_views"
+
+    id: Mapped[uuid.UUID]        = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    role_id: Mapped[uuid.UUID]   = mapped_column(UUID(as_uuid=True), ForeignKey("roles.id", ondelete="CASCADE"), nullable=False)
+    host_id: Mapped[uuid.UUID]   = mapped_column(UUID(as_uuid=True), ForeignKey("ha_hosts.id", ondelete="CASCADE"), nullable=False)
+    title: Mapped[str]           = mapped_column(String(200), nullable=False)
+    slug: Mapped[str]            = mapped_column(String(200), unique=True, nullable=False)
+    order: Mapped[int]           = mapped_column(Integer, default=0)
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
+
+    widgets: Mapped[list["ViewWidget"]] = relationship(back_populates="view", cascade="all, delete", order_by="ViewWidget.order")
+
+class ViewWidget(Base):
+    __tablename__ = "view_widgets"
+
+    id: Mapped[uuid.UUID]        = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    view_id: Mapped[uuid.UUID]   = mapped_column(UUID(as_uuid=True), ForeignKey("custom_views.id", ondelete="CASCADE"), nullable=False)
+    entity_id: Mapped[str]       = mapped_column(String(200), nullable=False)
+    label: Mapped[str]           = mapped_column(String(200), nullable=True)
+    icon: Mapped[str]            = mapped_column(String(50), nullable=True)
+    color: Mapped[str]           = mapped_column(String(50), nullable=True)
+    size: Mapped[str]            = mapped_column(String(20), default="medium")  # small, medium, large
+    order: Mapped[int]           = mapped_column(Integer, default=0)
+
+    view: Mapped["CustomView"] = relationship(back_populates="widgets")

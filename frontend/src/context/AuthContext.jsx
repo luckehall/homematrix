@@ -18,7 +18,9 @@ export function AuthProvider({ children }) {
         const token = data.access_token
         const totp = await axios.get('https://homematrix.iotzator.com/api/auth/2fa/status',
           { headers: { Authorization: `Bearer ${token}` } }).then(r => r.data).catch(() => ({ enabled: true, required: false }))
-        setUser({ id: payload.sub, is_admin: payload.is_admin, totp_required: totp.required, totp_enabled: totp.enabled })
+        const views = await axios.get('https://homematrix.iotzator.com/api/views/my',
+          { headers: { Authorization: `Bearer ${token}` } }).then(r => r.data).catch(() => [])
+        setUser({ id: payload.sub, is_admin: payload.is_admin, totp_required: totp.required, totp_enabled: totp.enabled, views })
       } catch {}
       finally { setLoading(false) }
     }
@@ -41,7 +43,9 @@ export function AuthProvider({ children }) {
     localStorage.setItem('access_token', data.access_token)
     const payload = JSON.parse(atob(data.access_token.split('.')[1]))
     const totp = await check2fa(data.access_token)
-    setUser({ id: payload.sub, is_admin: payload.is_admin, totp_required: totp.required, totp_enabled: totp.enabled })
+    const views = await axios.get('https://homematrix.iotzator.com/api/views/my',
+      { headers: { Authorization: `Bearer ${data.access_token}` } }).then(r => r.data).catch(() => [])
+    setUser({ id: payload.sub, is_admin: payload.is_admin, totp_required: totp.required, totp_enabled: totp.enabled, views })
   }
 
   const logout = async () => {

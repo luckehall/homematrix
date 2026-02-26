@@ -5,17 +5,6 @@ import Register from './pages/Register'
 import Dashboard from './pages/Dashboard'
 import Admin from './pages/Admin'
 import Profile from './pages/Profile'
-import CustomView from './pages/CustomView'
-
-function PublicRoute({ children }) {
-  const { user, loading } = useAuth()
-  if (loading) return <div className="loading">Caricamento...</div>
-  if (user) {
-    if (user.views?.length > 0 && !user.is_admin) return <Navigate to={`/view/${user.views[0].slug}`} />
-    return <Navigate to="/dashboard" />
-  }
-  return children
-}
 
 function PrivateRoute({ children }) {
   const { user, loading } = useAuth()
@@ -39,12 +28,11 @@ export default function App() {
     <AuthProvider>
       <BrowserRouter>
         <Routes>
-          <Route path="/" element={<PublicRoute><Login /></PublicRoute>} />
-          <Route path="/register" element={<PublicRoute><Register /></PublicRoute>} />
+          <Route path="/" element={<Login />} />
+          <Route path="/register" element={<Register />} />
           <Route path="/dashboard" element={<PrivateRoute><Dashboard /></PrivateRoute>} />
           <Route path="/profile" element={<PrivateRoute><Profile /></PrivateRoute>} />
           <Route path="/admin" element={<AdminRoute><Admin /></AdminRoute>} />
-          <Route path="/view/:slug" element={<PrivateRoute><CustomView /></PrivateRoute>} />
         </Routes>
       </BrowserRouter>
     </AuthProvider>
