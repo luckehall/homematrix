@@ -170,3 +170,29 @@ body { background:var(--bg); color:var(--text); font-family:'Syne',sans-serif; }
 .entity-option:hover { background: var(--surface2); }
 .entity-option-id { font-family: 'DM Mono', monospace; font-size: 12px; color: var(--accent); }
 .entity-option-name { font-size: 12px; color: var(--muted); }
+
+/* ── ICON PICKER ── */
+.icon-picker {
+  position: absolute;
+  top: calc(100% + 4px);
+  left: 0;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  padding: 10px;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+  width: 280px;
+  z-index: 200;
+  box-shadow: 0 8px 24px rgba(0,0,0,.4);
+}
+.icon-opt {
+  font-size: 20px;
+  padding: 4px;
+  border-radius: 6px;
+  cursor: pointer;
+  transition: background .15s;
+  line-height: 1;
+}
+.icon-opt:hover { background: var(--surface2); }

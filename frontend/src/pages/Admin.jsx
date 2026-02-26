@@ -6,23 +6,36 @@ import './Admin.css'
 
 
 function WidgetAddRow({ value, onChange, entities, onLoadEntities, search, onSearchChange, onAdd }) {
-  const [open, setOpen] = useState(false)
-  const filtered = entities
-    ? entities.filter(e => !search || e.entity_id.includes(search) || e.friendly_name.toLowerCase().includes(search.toLowerCase())).slice(0,8)
-    : []
+  const [focused, setFocused] = useState(false)
+  const [loaded, setLoaded] = useState(false)
+
+  const handleFocus = async () => {
+    setFocused(true)
+    if (!loaded) {
+      await onLoadEntities()
+      setLoaded(true)
+    }
+  }
+
+  const filtered = !entities ? [] : entities
+    .filter(e => e.entity_id && (!search || e.entity_id.includes(search) || (e.friendly_name||'').toLowerCase().includes(search.toLowerCase())))
+    .slice(0, 8)
+
   return (
     <div className="widget-add-row">
       <div className="entity-autocomplete">
         <input placeholder="Cerca entità..." value={search}
-          onFocus={() => { setOpen(true); if (!entities) onLoadEntities() }}
-          onBlur={() => setTimeout(()=>setOpen(false),150)}
-          onChange={e => { onSearchChange(e.target.value); onChange({...value,entity_id:e.target.value}) }} />
-        {open && filtered.length > 0 && (
+          onFocus={handleFocus}
+          onBlur={() => setTimeout(() => setFocused(false), 200)}
+          onChange={e => { onSearchChange(e.target.value); onChange({...value, entity_id: e.target.value}) }} />
+        {focused && (
           <div className="entity-dropdown">
+            {!entities && <div className="entity-option"><span className="entity-option-name">⏳ Caricamento...</span></div>}
+            {entities && filtered.length === 0 && <div className="entity-option"><span className="entity-option-name">Nessun risultato</span></div>}
             {filtered.map(e => (
               <div key={e.entity_id} className="entity-option"
-                onMouseDown={ev=>ev.preventDefault()}
-                onClick={()=>{ onChange({...value,entity_id:e.entity_id,label:value.label||e.friendly_name}); onSearchChange(e.entity_id); setOpen(false) }}>
+                onMouseDown={ev => ev.preventDefault()}
+                onClick={() => { onChange({...value, entity_id: e.entity_id, label: value.label || e.friendly_name}); onSearchChange(e.entity_id); setFocused(false) }}>
                 <span className="entity-option-id">{e.entity_id}</span>
                 <span className="entity-option-name">{e.friendly_name}</span>
               </div>
@@ -31,8 +44,27 @@ function WidgetAddRow({ value, onChange, entities, onLoadEntities, search, onSea
         )}
       </div>
       <input placeholder="Label" style={{width:'130px'}} value={value.label||''} onChange={e=>onChange({...value,label:e.target.value})} />
-      <input placeholder="Icona" style={{width:'65px'}} value={value.icon||''} onChange={e=>onChange({...value,icon:e.target.value})} />
-      <input placeholder="#colore" style={{width:'95px'}} value={value.color||''} onChange={e=>onChange({...value,color:e.target.value})} />
+      <div style={{position:'relative'}}>
+        <input placeholder="Icona" style={{width:'65px', cursor:'pointer'}} value={value.icon||''} readOnly
+          onClick={()=>onChange({...value, _showIcons: !value._showIcons})} />
+        {value._showIcons && (
+          <div className="icon-picker">
+            {['💡','🔆','🌙','🏠','🚪','🔒','🔓','🪟','🛋️','🛏️','🚿','🍳',
+              '❄️','🌡️','🌬️','💧','🔥','⚡','🔋','📡','📷','🔔','🚨','🟢','🔴',
+              '▶️','⏹️','⏫','⏬','🎵','📺','💻','🖥️','🌿','☀️','🌧️','🌈',
+              '🚗','🏎️','🚲','🛵','✅','❌','⚠️','ℹ️','🔧','⚙️'].map(ico => (
+              <span key={ico} className="icon-opt" onClick={()=>onChange({...value, icon:ico, _showIcons:false})}>{ico}</span>
+            ))}
+          </div>
+        )}
+      </div>
+      <div style={{display:'flex', alignItems:'center', gap:'4px'}}>
+        <input type="color" value={value.color||'#00e5c0'}
+          style={{width:'36px', height:'36px', padding:'2px', border:'1px solid var(--border)', borderRadius:'8px', background:'var(--surface2)', cursor:'pointer'}}
+          onChange={e=>onChange({...value,color:e.target.value})} />
+        <input placeholder="#colore" style={{width:'80px'}} value={value.color||''}
+          onChange={e=>onChange({...value,color:e.target.value})} />
+      </div>
       <select value={value.size||'medium'} onChange={e=>onChange({...value,size:e.target.value})}>
         <option value="small">Piccolo</option><option value="medium">Medio</option><option value="large">Grande</option>
       </select>
@@ -66,15 +98,13 @@ export default function Admin() {
   const [newPerm, setNewPerm] = useState({})
 
   const loadViewEntities = async (viewId, hostId) => {
-    if (viewEntities[viewId]) return
+    if (viewEntities[viewId]) return viewEntities[viewId]
     try {
-      const r = await api.get(`/api/hosts/${hostId}/domains`)
-      const entities = r.data.entities.map(e => ({
-        entity_id: e.entity_id,
-        friendly_name: e.attributes?.friendly_name || e.entity_id
-      }))
+      const r = await api.get(`/api/admin/views/${viewId}/entities`)
+      const entities = r.data.entities
       setViewEntities(prev => ({...prev, [viewId]: entities}))
-    } catch(e) { console.error(e) }
+      return entities
+    } catch(e) { console.error(e); return [] }
   }
 
   const loadViews = async () => {
@@ -443,7 +473,7 @@ export default function Admin() {
                 <div className="view-header">
                   <div>
                     <div className="view-title">{view.title}</div>
-                    <div className="view-meta">/view/{view.slug} · {roles.find(r=>r.id===view.role_id)?.name || ''}</div>
+                    <div className="view-meta">/view/{view.slug} · {roles.find(r=>r.id===view.role_id)?.name || ''} · entità: {viewEntities[view.id]?.length ?? "non caricate"}</div>
                   </div>
                   <div className="host-actions">
                     <a className="btn-toggle" href={`/view/${view.slug}`} target="_blank">↗ Apri</a>

@@ -111,3 +111,24 @@
 .cv-btn--press { background: rgba(0,229,192,.1); color: var(--accent); border: 1px solid rgba(0,229,192,.2); }
 .cv-btn--press:hover { background: rgba(0,229,192,.2); }
 .cv-btn--on:hover { opacity: .85; }
+
+.cv-header-left { display: flex; align-items: center; gap: 16px; }
+.cv-tabs { display: flex; gap: 6px; }
+.cv-tab {
+  padding: 7px 16px;
+  border-radius: 8px;
+  border: 1px solid var(--border);
+  background: var(--surface2);
+  color: var(--muted);
+  font-size: 13px;
+  font-family: 'Syne', sans-serif;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all .2s;
+}
+.cv-tab.active {
+  background: rgba(0,229,192,.1);
+  border-color: rgba(0,229,192,.3);
+  color: var(--accent);
+}
+.cv-tab:hover:not(.active) { color: var(--text); border-color: rgba(255,255,255,.2); }

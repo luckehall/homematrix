@@ -168,3 +168,55 @@ async def get_view(slug: str, db: AsyncSession = Depends(get_db),
                for w in view.widgets]
     return {"id": str(view.id), "title": view.title, "slug": view.slug,
             "host_id": str(view.host_id), "widgets": widgets}
+
+@router.get("/admin/views/{view_id}/entities")
+async def get_view_entities(view_id: str, db: AsyncSession = Depends(get_db),
+                            admin: User = Depends(require_admin)):
+    """Entità filtrate per ruolo della vista."""
+    from app.models import RolePermission
+    import httpx as _httpx
+
+    view = await db.get(CustomView, view_id)
+    if not view: raise HTTPException(404, "Vista non trovata")
+
+    host = await db.get(HAHost, view.host_id)
+    if not host: raise HTTPException(404, "Host non trovato")
+
+    # Permessi del ruolo
+    perm_result = await db.execute(
+        select(RolePermission).where(RolePermission.role_id == view.role_id,
+                                     RolePermission.host_id == view.host_id))
+    perms = perm_result.scalars().all()
+    import json as _json
+    allowed_domains = []
+    allowed_entities = []
+    for p in perms:
+        if p.allowed_domains:
+            try: allowed_domains += _json.loads(p.allowed_domains)
+            except: allowed_domains += [d.strip() for d in p.allowed_domains.split(",") if d.strip()]
+        if p.allowed_entities:
+            try: allowed_entities += _json.loads(p.allowed_entities)
+            except: allowed_entities += [e.strip() for e in p.allowed_entities.split(",") if e.strip()]
+
+    # Tutti gli stati da HA
+    async with _httpx.AsyncClient(verify=False, timeout=15) as client:
+        resp = await client.get(f"{host.base_url}/api/states",
+                                headers={"Authorization": f"Bearer {decrypt(host.token)}"})
+    if resp.status_code != 200:
+        raise HTTPException(resp.status_code, "Errore HA")
+
+    states = resp.json()
+
+    # Filtra per permessi ruolo
+    def is_allowed(s):
+        eid = s["entity_id"]
+        domain = eid.split(".")[0]
+        if eid in allowed_entities: return True
+        if domain in allowed_domains: return True
+        return False
+
+    filtered = [{"entity_id": s["entity_id"],
+                 "friendly_name": s.get("attributes", {}).get("friendly_name", s["entity_id"])}
+                for s in states if is_allowed(s)]
+
+    return {"entities": sorted(filtered, key=lambda x: x["entity_id"])}

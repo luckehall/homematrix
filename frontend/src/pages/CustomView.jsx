@@ -48,6 +48,7 @@ export default function CustomView() {
   const { slug } = useParams()
   const navigate = useNavigate()
   const [view, setView] = useState(null)
+  const [myViews, setMyViews] = useState([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
 
@@ -59,6 +60,10 @@ export default function CustomView() {
       setError(e.response?.data?.detail || 'Errore caricamento vista')
     } finally { setLoading(false) }
   }, [slug])
+
+  useEffect(() => {
+    api.get('/api/views/my').then(r => setMyViews(r.data)).catch(()=>{})
+  }, [])
 
   useEffect(() => {
     load()
@@ -79,8 +84,21 @@ export default function CustomView() {
   return (
     <div className="cv-shell">
       <div className="cv-header">
+        <div className="cv-header-left">
+          <button className="cv-back" onClick={() => navigate('/dashboard')}>← Dashboard</button>
+          {myViews.length > 1 && (
+            <div className="cv-tabs">
+              {myViews.map(v => (
+                <button key={v.slug}
+                  className={`cv-tab ${v.slug === slug ? 'active' : ''}`}
+                  onClick={() => navigate(`/view/${v.slug}`)}>
+                  {v.title}
+                </button>
+              ))}
+            </div>
+          )}
+        </div>
         <h1 className="cv-title">{view.title}</h1>
-        <button className="cv-back" onClick={() => navigate('/dashboard')}>← Dashboard</button>
       </div>
       <div className="cv-grid">
         {view.widgets.sort((a,b) => a.order - b.order).map(w => (
