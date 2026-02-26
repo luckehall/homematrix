@@ -53,7 +53,7 @@ async def register(request: Request, data: RegisterRequest, db: AsyncSession = D
     log_register(data.email, request.client.host)
     return {"message": "Registrazione completata. Attendi l'approvazione dell'amministratore."}
 
-@router.post("/login", response_model=TokenResponse)
+@router.post("/login")
 @limiter.limit("10/minute")
 async def login(request: Request, data: LoginRequest, response: Response, db: AsyncSession = Depends(get_db)):
     result = await db.execute(select(User).where(User.email == data.email))
@@ -74,6 +74,32 @@ async def login(request: Request, data: LoginRequest, response: Response, db: As
         httponly=True, secure=True, samesite="strict",
         max_age=settings.REFRESH_TOKEN_EXPIRE_DAYS * 86400
     )
+    # Controlla se 2FA è richiesto
+    requires_2fa = user.totp_enabled and (user.is_admin or user.require_2fa or any_role_requires_2fa)
+    if requires_2fa:
+        # Emetti token temporaneo (5 minuti) per la verifica 2FA
+        temp_token = create_access_token(str(user.id), user.is_admin, expires_minutes=5)
+        return {"requires_2fa": True, "temp_token": temp_token}
+
+    # Controlla se 2FA è richiesto
+    needs_2fa = False
+    if user.totp_enabled:
+        if user.is_admin or user.require_2fa:
+            needs_2fa = True
+        else:
+            # Controlla se qualche ruolo richiede 2FA
+            role_result = await db.execute(select(UserRole).where(UserRole.user_id == user.id))
+            user_roles = role_result.scalars().all()
+            for ur in user_roles:
+                role = await db.get(Role, ur.role_id)
+                if role and role.require_2fa:
+                    needs_2fa = True
+                    break
+
+    if needs_2fa:
+        temp_token = create_access_token(str(user.id), user.is_admin, expires_minutes=5)
+        return {"requires_2fa": True, "temp_token": temp_token}
+
     log_login_ok(user.email, request.client.host)
     return {"access_token": create_access_token(str(user.id), user.is_admin)}
 

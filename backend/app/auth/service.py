@@ -12,10 +12,10 @@ def hash_password(password: str) -> str:
 def verify_password(plain: str, hashed: str) -> bool:
     return pwd_context.verify(plain, hashed)
 
-def create_access_token(user_id: str, is_admin: bool) -> str:
-    expire = datetime.utcnow() + timedelta(minutes=settings.ACCESS_TOKEN_EXPIRE_MINUTES)
+def create_access_token(user_id: str, is_admin: bool, expires_minutes: int = None) -> str:
+    expire = datetime.utcnow() + timedelta(minutes=expires_minutes or settings.ACCESS_TOKEN_EXPIRE_MINUTES)
     return jwt.encode(
-        {"sub": user_id, "is_admin": is_admin, "exp": expire},
+        {"sub": user_id, "is_admin": is_admin, "exp": expire, "temp": expires_minutes is not None},
         settings.JWT_SECRET, algorithm=settings.JWT_ALGORITHM
     )
 

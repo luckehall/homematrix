@@ -12,7 +12,7 @@ from app.auth.service import create_access_token
 router = APIRouter()
 
 DEVICE_COOKIE = "hm_device"
-DEVICE_EXPIRY_DAYS = 30
+DEVICE_EXPIRY_DAYS = 180
 
 class VerifyTOTPRequest(BaseModel):
     code: str
