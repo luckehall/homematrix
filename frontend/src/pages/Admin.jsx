@@ -197,6 +197,7 @@ export default function Admin() {
           ['create', 'Nuovo Utente'],
           ['hosts', 'Host HA'],
           ['roles', 'Ruoli & Permessi'],
+          ['views', '🖥 Viste'],
         ].map(([t, label]) => (
           <div key={t} className={`admin-tab ${tab===t?'active':''}`} onClick={() => setTab(t)}>{label}</div>
         ))}
