@@ -12,6 +12,25 @@ export default function Admin() {
   const [users, setUsers] = useState([])
   const [hosts, setHosts] = useState([])
   const [roles, setRoles] = useState([])
+  const [views, setViews] = useState([])
+  const [newView, setNewView] = useState({role_id:"", host_id:"", title:""})
+  const [newWidget, setNewWidget] = useState({})
+  const [editingWidget, setEditingWidget] = useState(null)
+  const [viewEntities, setViewEntities] = useState({}) // {viewId: [{entity_id, domain, friendly_name}]}
+  const [entitySearch, setEntitySearch] = useState({}) // {viewId: searchString}
+
+  const loadViewEntities = async (viewId, hostId) => {
+    if (viewEntities[viewId]) return
+    try {
+      const r = await api.get(`/api/hosts/${hostId}/domains`)
+      const entities = r.data.entities.map(e => ({
+        entity_id: e.entity_id,
+        domain: e.entity_id.split('.')[0],
+        friendly_name: e.attributes?.friendly_name || e.entity_id
+      }))
+      setViewEntities(prev => ({...prev, [viewId]: entities}))
+    } catch {}
+  }
   const [userRoles, setUserRoles] = useState({}) // { userId: [{assignment_id, role_id, role_name}] }
   const [msg, setMsg] = useState('')
 
@@ -64,13 +83,15 @@ export default function Admin() {
   }
 
   const load = async () => {
-    const [p, u, h, r] = await Promise.all([
+    const [p, u, h, r, v] = await Promise.all([
       api.get('/api/admin/users/pending'),
       api.get('/api/admin/users'),
       api.get('/api/admin/hosts'),
       api.get('/api/admin/roles'),
+      api.get('/api/admin/views'),
     ])
     setPending(p.data); setUsers(u.data); setHosts(h.data); setRoles(r.data)
+    setViews(v.data)
     // Carica ruoli per ogni utente
     const rolesMap = {}
     await Promise.all(u.data.map(async user => {
@@ -427,9 +448,32 @@ export default function Admin() {
                 </div>
 
                 <div className="widget-add-row">
-                  <input placeholder="entity_id (es. switch.luce_ingresso)"
-                    value={newWidget[view.id]?.entity_id || ''}
-                    onChange={e=>setNewWidget({...newWidget, [view.id]:{...newWidget[view.id], entity_id:e.target.value}})} />
+                  <div className="entity-autocomplete" style={{flex:2,position:'relative'}}>
+                    <input placeholder="Cerca entità..."
+                      value={entitySearch[view.id] !== undefined ? entitySearch[view.id] : (newWidget[view.id]?.entity_id || '')}
+                      onFocus={() => loadViewEntities(view.id, view.host_id)}
+                      onChange={e => {
+                        setEntitySearch({...entitySearch, [view.id]: e.target.value})
+                        setNewWidget({...newWidget, [view.id]:{...newWidget[view.id], entity_id: e.target.value}})
+                      }} />
+                    {entitySearch[view.id] !== undefined && entitySearch[view.id].length > 0 && viewEntities[view.id] && (
+                      <div className="entity-dropdown">
+                        {viewEntities[view.id]
+                          .filter(e => e.entity_id.includes(entitySearch[view.id]) || e.friendly_name.toLowerCase().includes(entitySearch[view.id].toLowerCase()))
+                          .slice(0, 8)
+                          .map(e => (
+                            <div key={e.entity_id} className="entity-option"
+                              onClick={() => {
+                                setNewWidget({...newWidget, [view.id]:{...newWidget[view.id], entity_id: e.entity_id, label: newWidget[view.id]?.label || e.friendly_name}})
+                                setEntitySearch({...entitySearch, [view.id]: undefined})
+                              }}>
+                              <span className="entity-option-id">{e.entity_id}</span>
+                              <span className="entity-option-name">{e.friendly_name}</span>
+                            </div>
+                          ))}
+                      </div>
+                    )}
+                  </div>
                   <input placeholder="Label" style={{width:'140px'}}
                     value={newWidget[view.id]?.label || ''}
                     onChange={e=>setNewWidget({...newWidget, [view.id]:{...newWidget[view.id], label:e.target.value}})} />

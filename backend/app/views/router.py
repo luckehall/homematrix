@@ -1,6 +1,7 @@
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select
+from sqlalchemy.orm import selectinload
 from pydantic import BaseModel
 from typing import Optional
 import httpx, re
@@ -48,7 +49,7 @@ class WidgetUpdate(BaseModel):
 @router.get("/admin/views")
 async def list_views(db: AsyncSession = Depends(get_db),
                      admin: User = Depends(require_admin)):
-    result = await db.execute(select(CustomView).order_by(CustomView.order))
+    result = await db.execute(select(CustomView).options(selectinload(CustomView.widgets)).order_by(CustomView.order))
     views = result.scalars().all()
     out = []
     for v in views:
@@ -133,14 +134,14 @@ async def get_my_views(db: AsyncSession = Depends(get_db),
     if not role_ids:
         return []
     result = await db.execute(
-        select(CustomView).where(CustomView.role_id.in_(role_ids)).order_by(CustomView.order))
+        select(CustomView).options(selectinload(CustomView.widgets)).where(CustomView.role_id.in_(role_ids)).order_by(CustomView.order))
     views = result.scalars().all()
     return [{"id": str(v.id), "title": v.title, "slug": v.slug, "order": v.order} for v in views]
 
 @router.get("/views/{slug}")
 async def get_view(slug: str, db: AsyncSession = Depends(get_db),
                    user: User = Depends(get_current_user)):
-    result = await db.execute(select(CustomView).where(CustomView.slug == slug))
+    result = await db.execute(select(CustomView).options(selectinload(CustomView.widgets)).where(CustomView.slug == slug))
     view = result.scalar_one_or_none()
     if not view: raise HTTPException(404, "Vista non trovata")
     role_ids = await get_user_role_ids(user, db)
