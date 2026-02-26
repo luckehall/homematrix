@@ -85,7 +85,7 @@ export default function CustomView() {
     <div className="cv-shell">
       <div className="cv-header">
         <div className="cv-header-left">
-          <button className="cv-back" onClick={() => navigate('/dashboard')}>← Dashboard</button>
+          <button className="cv-back" onClick={() => navigate('/profile')}>← Profilo</button>
           {myViews.length > 1 && (
             <div className="cv-tabs">
               {myViews.map(v => (

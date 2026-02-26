@@ -132,3 +132,34 @@
   color: var(--accent);
 }
 .cv-tab:hover:not(.active) { color: var(--text); border-color: rgba(255,255,255,.2); }
+
+/* ── HEADER RESPONSIVE ── */
+.cv-header {
+  display: flex;
+  flex-direction: column;
+  padding: 0;
+  border-bottom: 1px solid var(--border);
+  background: var(--surface);
+}
+.cv-topbar {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 12px 24px;
+  border-bottom: 1px solid var(--border);
+  flex-wrap: wrap;
+}
+.cv-titlebar {
+  padding: 14px 24px;
+}
+.cv-title { margin: 0; font-size: 20px; }
+
+@media (max-width: 600px) {
+  .cv-topbar { padding: 10px 14px; gap: 8px; }
+  .cv-titlebar { padding: 10px 14px; }
+  .cv-title { font-size: 17px; }
+  .cv-tab { padding: 6px 11px; font-size: 12px; }
+  .cv-back { padding: 6px 11px; font-size: 12px; }
+  .cv-grid { padding: 14px; gap: 12px; }
+  .cv-widget--small, .cv-widget--medium, .cv-widget--large { width: 100%; }
+}

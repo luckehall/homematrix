@@ -84,6 +84,11 @@ export default function Profile() {
     <div className="profile-shell">
       <div className="auth-bg" />
 
+      <div className="profile-header">
+        <div className="profile-header-logo">Home<span>Matrix</span></div>
+        <button className="profile-logout-btn" onClick={async () => { await logout(); navigate("/") }}>⏻ Logout</button>
+      </div>
+
       <div className="profile-grid">
 
         {/* ── CAMBIO PASSWORD ── */}
