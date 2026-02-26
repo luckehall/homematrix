@@ -6,6 +6,13 @@ import Dashboard from './pages/Dashboard'
 import Admin from './pages/Admin'
 import Profile from './pages/Profile'
 
+function PublicRoute({ children }) {
+  const { user, loading } = useAuth()
+  if (loading) return <div className="loading">Caricamento...</div>
+  if (user) return <Navigate to="/dashboard" />
+  return children
+}
+
 function PrivateRoute({ children }) {
   const { user, loading } = useAuth()
   if (loading) return <div className="loading">Caricamento...</div>
@@ -28,8 +35,8 @@ export default function App() {
     <AuthProvider>
       <BrowserRouter>
         <Routes>
-          <Route path="/" element={<Login />} />
-          <Route path="/register" element={<Register />} />
+          <Route path="/" element={<PublicRoute><Login /></PublicRoute>} />
+          <Route path="/register" element={<PublicRoute><Register /></PublicRoute>} />
           <Route path="/dashboard" element={<PrivateRoute><Dashboard /></PrivateRoute>} />
           <Route path="/profile" element={<PrivateRoute><Profile /></PrivateRoute>} />
           <Route path="/admin" element={<AdminRoute><Admin /></AdminRoute>} />
