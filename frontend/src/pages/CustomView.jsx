@@ -84,7 +84,7 @@ export default function CustomView() {
   return (
     <div className="cv-shell">
       <div className="cv-header">
-        <div className="cv-header-left">
+        <div className="cv-topbar">
           <button className="cv-back" onClick={() => navigate('/profile')}>← Profilo</button>
           {myViews.length > 1 && (
             <div className="cv-tabs">
@@ -98,7 +98,9 @@ export default function CustomView() {
             </div>
           )}
         </div>
-        <h1 className="cv-title">{view.title}</h1>
+        <div className="cv-titlebar">
+          <h1 className="cv-title">{view.title}</h1>
+        </div>
       </div>
       <div className="cv-grid">
         {view.widgets.sort((a,b) => a.order - b.order).map(w => (

@@ -6,7 +6,7 @@ import './Auth.css'
 import './Profile.css'
 
 export default function Profile() {
-  const { logout } = useAuth()
+  const { logout, user } = useAuth()
   const navigate = useNavigate()
   const location = useLocation()
   const force2fa = location.state?.force2fa
@@ -85,7 +85,10 @@ export default function Profile() {
       <div className="auth-bg" />
 
       <div className="profile-header">
-        <div className="profile-header-logo">Home<span>Matrix</span></div>
+        <div style={{display:"flex",alignItems:"center",gap:"12px"}}>
+          <button className="profile-logout-btn" onClick={() => navigate(user?.views?.length > 0 ? `/view/${user.views[0].slug}` : "/dashboard")}>← Indietro</button>
+          <div className="profile-header-logo">Home<span>Matrix</span></div>
+        </div>
         <button className="profile-logout-btn" onClick={async () => { await logout(); navigate("/") }}>⏻ Logout</button>
       </div>
 
@@ -113,7 +116,7 @@ export default function Profile() {
             <button className="btn-primary" type="submit" disabled={pwdBusy}>{pwdBusy ? 'Aggiornamento...' : 'Aggiorna password'}</button>
           </form>
           <div className="auth-footer">
-            <span style={{cursor:'pointer',color:'var(--accent)'}} onClick={() => navigate('/dashboard')}>← Torna alla dashboard</span>
+
           </div>
         </div>
 
