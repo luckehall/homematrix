@@ -95,6 +95,7 @@ export default function Admin() {
   const [newRole, setNewRole] = useState({ name:'', description:'' })
   const [resetPwd, setResetPwd] = useState({})
   const [assignRole, setAssignRole] = useState({})
+  const [confirmDelete, setConfirmDelete] = useState(null)
   const [newPerm, setNewPerm] = useState({})
 
   const loadViewEntities = async (viewId, hostId) => {
@@ -181,10 +182,14 @@ export default function Admin() {
 
   const createUser = async e => {
     e.preventDefault()
-    await api.post('/api/admin/users', newUser)
-    notify(`Utente ${newUser.email} creato ✓`)
-    setNewUser({ email:'', full_name:'', password:'', is_admin:false })
-    load()
+    try {
+      await api.post('/api/admin/users', newUser)
+      notify(`Utente ${newUser.email} creato ✓`)
+      setNewUser({ email:'', full_name:'', password:'', is_admin:false })
+      load()
+    } catch(err) {
+      notify('Errore: ' + (err.response?.data?.detail || err.message))
+    }
   }
 
   const doResetPwd = async (userId) => {
@@ -348,7 +353,15 @@ export default function Admin() {
                     <button className="btn-deny btn-xs" onClick={() => rmAdmin(u.id)}>✕ Admin</button>
                   )}
                   {String(u.id) !== String(currentUser?.id) && (
-                    <button className="btn-deny btn-xs" onClick={() => deleteUser(u.id)}>🗑 Elimina</button>
+                    confirmDelete === u.id ? (
+                      <span style={{display:'flex',gap:'4px',alignItems:'center'}}>
+                        <span style={{fontSize:'12px',color:'var(--muted)'}}>Conferma?</span>
+                        <button className="btn-deny btn-xs" onClick={() => deleteUser(u.id)}>✓ Sì</button>
+                        <button className="btn-toggle btn-xs" onClick={() => setConfirmDelete(null)}>✕ No</button>
+                      </span>
+                    ) : (
+                      <button className="btn-deny btn-xs" onClick={() => setConfirmDelete(u.id)}>🗑 Elimina</button>
+                    )
                   )}
                   <div className="assign-row">
                     <select className="select-sm"

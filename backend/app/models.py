@@ -23,8 +23,8 @@ class User(Base):
     request_reason: Mapped[str] = mapped_column(Text, nullable=True)
     totp_secret: Mapped[str]  = mapped_column(String(64), nullable=True)
     totp_enabled: Mapped[bool]          = mapped_column(Boolean, default=False)
-    require_2fa: Mapped[bool]
-    google_auth: Mapped[bool]     = mapped_column(Boolean, default=False)
+    require_2fa: Mapped[bool]     = mapped_column(Boolean, default=False, server_default="false")
+    google_auth: Mapped[bool]     = mapped_column(Boolean, default=False, server_default="false")
     created_at: Mapped[datetime]= mapped_column(DateTime, default=datetime.utcnow)
     approved_at: Mapped[datetime]= mapped_column(DateTime, nullable=True)
 
@@ -62,7 +62,7 @@ class Role(Base):
     name: Mapped[str]           = mapped_column(String(100), unique=True, nullable=False)
     description: Mapped[str]    = mapped_column(Text, nullable=True)
     created_at: Mapped[datetime]= mapped_column(DateTime, default=datetime.utcnow)
-    require_2fa: Mapped[bool]
+    require_2fa: Mapped[bool]     = mapped_column(Boolean, default=False, server_default="false")
 
     permissions: Mapped[list["RolePermission"]] = relationship(back_populates="role", cascade="all, delete")
     users: Mapped[list["UserRole"]] = relationship(back_populates="role", cascade="all, delete")
