@@ -7,6 +7,7 @@ from app.limiter import limiter
 from app.config import settings
 from app.auth.router import router as auth_router
 from app.auth.reset_router import router as reset_router
+from app.auth.google_router import router as google_router
 from app.auth.totp_router import router as totp_router
 from app.admin.router import router as admin_router
 from app.hosts.router import router as hosts_router
@@ -33,6 +34,7 @@ app.add_middleware(
 
 app.include_router(auth_router, prefix="/api/auth", tags=["auth"])
 app.include_router(reset_router, prefix="/api/auth", tags=["reset"])
+app.include_router(google_router, prefix="/api/auth", tags=["google"])
 app.include_router(totp_router, prefix="/api/auth/2fa", tags=["2fa"])
 app.include_router(admin_router, prefix="/api/admin", tags=["admin"])
 app.include_router(hosts_router, prefix="/api/hosts", tags=["hosts"])

@@ -177,6 +177,7 @@ export default function Admin() {
   const mkAdmin  = async id => { await api.post(`/api/admin/users/${id}/make-admin`); notify('Utente promosso admin ✓'); load() }
   const rmAdmin  = async id => { await api.post(`/api/admin/users/${id}/remove-admin`); notify('Privilegi admin revocati'); load() }
   const toggle2fa = async id => { const r = await api.post(`/api/admin/users/${id}/require-2fa`); notify(r.data.message); load() }
+  const deleteUser = async id => { try { await api.delete(`/api/admin/users/${id}`); notify('Utente eliminato'); load() } catch(e) { notify('Errore: ' + (e.response?.data?.detail || e.message)) } }
 
   const createUser = async e => {
     e.preventDefault()
@@ -345,6 +346,9 @@ export default function Admin() {
                   <button className={`btn-2fa btn-xs ${u.require_2fa ? 'active' : ''}`} onClick={() => toggle2fa(u.id)}>{u.require_2fa ? '🔐 2FA ON' : '🔓 2FA OFF'}</button>
                   {u.is_admin && String(u.id) !== String(currentUser?.id) && (
                     <button className="btn-deny btn-xs" onClick={() => rmAdmin(u.id)}>✕ Admin</button>
+                  )}
+                  {String(u.id) !== String(currentUser?.id) && (
+                    <button className="btn-deny btn-xs" onClick={() => deleteUser(u.id)}>🗑 Elimina</button>
                   )}
                   <div className="assign-row">
                     <select className="select-sm"

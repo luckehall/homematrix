@@ -128,6 +128,23 @@ async def get_user_roles(user_id: str, db: AsyncSession = Depends(get_db),
             out.append({"assignment_id": str(ur.id), "role_id": str(role.id), "role_name": role.name})
     return out
 
+
+@router.delete("/users/{user_id}")
+async def delete_user(user_id: str, current: User = Depends(require_admin), db: AsyncSession = Depends(get_db)):
+    from sqlalchemy import text
+    user = await db.get(User, user_id)
+    if not user:
+        raise HTTPException(404, "Utente non trovato")
+    if str(user.id) == str(current.id):
+        raise HTTPException(400, "Non puoi eliminare il tuo account")
+    # Cancella dipendenze in cascata
+    await db.execute(text("DELETE FROM sessions WHERE user_id = :uid"), {"uid": user_id})
+    await db.execute(text("DELETE FROM trusted_devices WHERE user_id = :uid"), {"uid": user_id})
+    await db.execute(text("DELETE FROM user_roles WHERE user_id = :uid"), {"uid": user_id})
+    await db.delete(user)
+    await db.commit()
+    return {"message": "Utente eliminato"}
+
 @router.delete("/users/{user_id}/roles/{role_id}")
 async def remove_user_role(user_id: str, role_id: str,
                            db: AsyncSession = Depends(get_db),

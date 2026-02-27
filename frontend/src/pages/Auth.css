@@ -105,3 +105,40 @@ body { background: var(--bg); color: var(--text); font-family: 'Syne', sans-seri
   0%,100% { opacity:1; } 50% { opacity:.5; }
 }
 .loading { min-height:100vh; display:flex; align-items:center; justify-content:center; color:var(--muted); font-family:'DM Mono',monospace; background:var(--bg); }
+
+/* ── Google Button ── */
+.btn-google {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  width: 100%;
+  padding: 12px;
+  border-radius: 10px;
+  border: 1px solid var(--border);
+  background: var(--surface2);
+  color: var(--text);
+  font-family: 'Syne', sans-serif;
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+  text-decoration: none;
+  transition: all .2s;
+  margin-bottom: 8px;
+}
+.btn-google:hover { border-color: rgba(255,255,255,.2); background: var(--surface); }
+
+.auth-divider {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin: 16px 0;
+  color: var(--muted);
+  font-size: 12px;
+}
+.auth-divider::before, .auth-divider::after {
+  content: '';
+  flex: 1;
+  height: 1px;
+  background: var(--border);
+}
