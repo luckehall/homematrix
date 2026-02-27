@@ -2,8 +2,8 @@ from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select
 from pydantic import BaseModel
-from datetime import datetime, timedelta
-import secrets, smtplib
+from datetime import timedelta
+import secrets, smtplib, redis
 from email.mime.text import MIMEText
 from email.mime.multipart import MIMEMultipart
 
@@ -14,8 +14,8 @@ from app.config import settings
 
 router = APIRouter()
 
-# Dizionario in memoria per i token di reset {token: (user_id, expires_at)}
-reset_tokens = {}
+redis_client = redis.Redis(host='localhost', port=6379, db=1, decode_responses=True)
+RESET_EXPIRY = 1800  # 30 minuti
 
 class ForgotRequest(BaseModel):
     email: str
@@ -28,7 +28,7 @@ class ResetRequest(BaseModel):
 def send_reset_email(to_email: str, reset_url: str):
     msg = MIMEMultipart("alternative")
     msg["Subject"] = "HomeMatrix — Reset password"
-    msg["From"] = settings.SMTP_USER
+    msg["From"] = "HomeMatrix <seriole47@gmail.com>"
     msg["To"] = to_email
 
     html = f"""
@@ -60,10 +60,9 @@ async def forgot_password(data: ForgotRequest, db: AsyncSession = Depends(get_db
     if not user or user.status != "active":
         return {"message": "Se l'email è registrata, riceverai le istruzioni."}
 
-    # Genera token
+    # Genera token e salva su Redis
     token = secrets.token_urlsafe(32)
-    expires = datetime.utcnow() + timedelta(minutes=30)
-    reset_tokens[token] = (str(user.id), expires)
+    redis_client.setex(f"reset:{token}", RESET_EXPIRY, str(user.id))
 
     # Invia email
     reset_url = f"https://homematrix.iotzator.com/reset-password?token={token}"
@@ -83,14 +82,9 @@ async def reset_password(data: ResetRequest, db: AsyncSession = Depends(get_db))
     if err:
         raise HTTPException(400, err)
 
-    token_data = reset_tokens.get(data.token)
-    if not token_data:
+    user_id = redis_client.get(f"reset:{data.token}")
+    if not user_id:
         raise HTTPException(400, "Token non valido o scaduto")
-
-    user_id, expires = token_data
-    if datetime.utcnow() > expires:
-        del reset_tokens[data.token]
-        raise HTTPException(400, "Token scaduto")
 
     result = await db.execute(select(User).where(User.id == user_id))
     user = result.scalar_one_or_none()
@@ -99,17 +93,12 @@ async def reset_password(data: ResetRequest, db: AsyncSession = Depends(get_db))
 
     user.hashed_password = hash_password(data.new_password)
     await db.commit()
-    del reset_tokens[data.token]
-
+    redis_client.delete(f"reset:{data.token}")
     return {"message": "Password reimpostata con successo"}
 
 @router.get("/reset-password/validate")
 async def validate_token(token: str):
-    token_data = reset_tokens.get(token)
-    if not token_data:
+    user_id = redis_client.get(f"reset:{token}")
+    if not user_id:
         raise HTTPException(400, "Token non valido o scaduto")
-    _, expires = token_data
-    if datetime.utcnow() > expires:
-        del reset_tokens[token]
-        raise HTTPException(400, "Token scaduto")
     return {"valid": True}
