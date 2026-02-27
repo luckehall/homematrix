@@ -77,10 +77,10 @@ async def google_callback(code: str, db: AsyncSession = Depends(get_db)):
         await db.commit()
         await db.refresh(user)
         # Redirect alla pagina di attesa approvazione
-        return RedirectResponse("https://homematrix.iotzator.com/?google=pending")
+        return RedirectResponse("https://homematrix.iotzator.com/google-pending")
 
     if user.status != "active":
-        return RedirectResponse("https://homematrix.iotzator.com/?google=pending")
+        return RedirectResponse("https://homematrix.iotzator.com/google-pending")
 
     # Genera token e redirect
     token = create_access_token(str(user.id), user.is_admin)
