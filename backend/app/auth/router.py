@@ -117,6 +117,17 @@ async def refresh(response: Response, refresh_token: Optional[str] = Cookie(None
     user = await db.get(User, session.user_id)
     if not user or user.status != UserStatus.active:
         raise HTTPException(403, "Utente non attivo")
+    # Rolling session: rinnova il refresh token ad ogni utilizzo
+    new_refresh_token = create_refresh_token()
+    new_expires = datetime.utcnow() + timedelta(days=settings.REFRESH_TOKEN_EXPIRE_DAYS)
+    session.refresh_token = new_refresh_token
+    session.expires_at = new_expires
+    await db.commit()
+    response.set_cookie(
+        key="refresh_token", value=new_refresh_token,
+        httponly=True, secure=True, samesite="lax",
+        max_age=settings.REFRESH_TOKEN_EXPIRE_DAYS * 86400
+    )
     return {"access_token": create_access_token(str(user.id), user.is_admin)}
 
 @router.post("/logout")

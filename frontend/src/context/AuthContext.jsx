@@ -21,7 +21,23 @@ export function AuthProvider({ children }) {
         const views = await axios.get('https://homematrix.iotzator.com/api/views/my',
           { headers: { Authorization: `Bearer ${token}` } }).then(r => r.data).catch(() => [])
         setUser({ id: payload.sub, is_admin: payload.is_admin, totp_required: totp.required, totp_enabled: totp.enabled, views })
-      } catch {}
+      } catch {
+        // Fallback: prova con access_token salvato nel localStorage
+        const saved = localStorage.getItem('access_token')
+        if (saved) {
+          try {
+            const payload = JSON.parse(atob(saved.split(".")[1]))
+            const exp = payload.exp * 1000
+            if (exp > Date.now()) {
+              const totp = await axios.get('https://homematrix.iotzator.com/api/auth/2fa/status',
+                { headers: { Authorization: `Bearer ${saved}` } }).then(r => r.data).catch(() => ({ enabled: true, required: false }))
+              const views = await axios.get('https://homematrix.iotzator.com/api/views/my',
+                { headers: { Authorization: `Bearer ${saved}` } }).then(r => r.data).catch(() => [])
+              setUser({ id: payload.sub, is_admin: payload.is_admin, totp_required: totp.required, totp_enabled: totp.enabled, views })
+            }
+          } catch {}
+        }
+      }
       finally { setLoading(false) }
     }
     init()
