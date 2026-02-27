@@ -71,7 +71,7 @@ async def login(request: Request, data: LoginRequest, response: Response, db: As
     await db.commit()
     response.set_cookie(
         key="refresh_token", value=refresh_token,
-        httponly=True, secure=True, samesite="strict",
+        httponly=True, secure=True, samesite="lax",
         max_age=settings.REFRESH_TOKEN_EXPIRE_DAYS * 86400
     )
     # Controlla se 2FA è richiesto
