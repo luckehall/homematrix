@@ -54,7 +54,7 @@ async def register(request: Request, data: RegisterRequest, db: AsyncSession = D
     return {"message": "Registrazione completata. Attendi l'approvazione dell'amministratore."}
 
 @router.post("/login")
-@limiter.limit("10/minute")
+@limiter.limit("20/minute")
 async def login(request: Request, data: LoginRequest, response: Response, db: AsyncSession = Depends(get_db)):
     result = await db.execute(select(User).where(User.email == data.email))
     user = result.scalar_one_or_none()
