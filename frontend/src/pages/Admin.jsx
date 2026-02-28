@@ -538,10 +538,37 @@ export default function Admin() {
                       {editingWidget?.widgetId === w.id ? (
                         <div className="widget-edit-row">
                           <input placeholder="Label" defaultValue={w.label||''} onChange={e=>setEditingWidget({...editingWidget,label:e.target.value})} />
-                          <input placeholder="Icona" defaultValue={w.icon||''} onChange={e=>setEditingWidget({...editingWidget,icon:e.target.value})} style={{width:'70px'}} />
-                          <input placeholder="#colore" defaultValue={w.color||''} onChange={e=>setEditingWidget({...editingWidget,color:e.target.value})} style={{width:'100px'}} />
-                          <input placeholder="Sfondo" defaultValue={w.bg_color||''} onChange={e=>setEditingWidget({...editingWidget,bg_color:e.target.value})} style={{width:'100px'}} />
-                          <select defaultValue={w.size} onChange={e=>setEditingWidget({...editingWidget,size:e.target.value})}>
+                          <div style={{position:'relative'}}>
+                            <input placeholder="Icona" style={{width:'65px',cursor:'pointer'}} value={editingWidget.icon||''} readOnly
+                              onClick={()=>setEditingWidget({...editingWidget,_showIcons:!editingWidget._showIcons})} />
+                            {editingWidget._showIcons && (
+                              <div className="icon-picker">
+                                {['💡','🔆','🌙','🏠','🚪','🔒','🔓','🪟','🛋️','🛏️','🚿','🍳',
+                                  '❄️','🌡️','🌬️','💧','🔥','⚡','🔋','📡','📷','🔔','🚨','🟢','🔴',
+                                  '▶️','⏹️','⏫','⏬','🎵','📺','💻','🖥️','🌿','☀️','🌧️','🌈',
+                                  '🚗','🏎️','🚲','🛵','✅','❌','⚠️','ℹ️','🔧','⚙️',
+                                  '🏡','🏢','🌅','🛁','🪴','🧹','🪑','🚽','🪞',
+                                  '🔌','🖱️','📱','☎️','🌊','🌲','🌵','🍀','🌸',
+                                  '🐶','🐱','🐟','🐦','🦜','☕','🍷','⚽','🎮',
+                                  '🎨','📚','📝','🌞','⭐','✨','🟥','🟦','🟩'].map(ico => (
+                                  <span key={ico} className="icon-opt" onClick={()=>setEditingWidget({...editingWidget,icon:ico,_showIcons:false})}>{ico}</span>
+                                ))}
+                              </div>
+                            )}
+                          </div>
+                          <input type="color" value={editingWidget.color||'#00e5c0'}
+                            title="Colore accent"
+                            style={{width:'36px',height:'28px',padding:'2px',border:'1px solid var(--border)',borderRadius:'6px',cursor:'pointer'}}
+                            onChange={e=>setEditingWidget({...editingWidget,color:e.target.value})} />
+                          <input placeholder="#colore" style={{width:'80px'}} value={editingWidget.color||''}
+                            onChange={e=>setEditingWidget({...editingWidget,color:e.target.value})} />
+                          <input type="color" value={editingWidget.bg_color||'#1a1d24'}
+                            title="Colore sfondo"
+                            style={{width:'36px',height:'28px',padding:'2px',border:'1px solid var(--border)',borderRadius:'6px',cursor:'pointer'}}
+                            onChange={e=>setEditingWidget({...editingWidget,bg_color:e.target.value})} />
+                          <input placeholder="Sfondo" style={{width:'80px'}} value={editingWidget.bg_color||''}
+                            onChange={e=>setEditingWidget({...editingWidget,bg_color:e.target.value})} />
+                          <select value={editingWidget.size||'medium'} onChange={e=>setEditingWidget({...editingWidget,size:e.target.value})}>
                             <option value="small">Piccolo</option><option value="medium">Medio</option><option value="large">Grande</option>
                           </select>
                           <button className="btn-approve btn-xs" onClick={()=>updateWidget(view.id,w.id,{label:editingWidget.label??w.label,icon:editingWidget.icon??w.icon,color:editingWidget.color??w.color,bg_color:editingWidget.bg_color??w.bg_color,size:editingWidget.size??w.size})}>✓</button>
