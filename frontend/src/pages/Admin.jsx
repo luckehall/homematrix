@@ -52,7 +52,19 @@ function WidgetAddRow({ value, onChange, entities, onLoadEntities, search, onSea
             {['💡','🔆','🌙','🏠','🚪','🔒','🔓','🪟','🛋️','🛏️','🚿','🍳',
               '❄️','🌡️','🌬️','💧','🔥','⚡','🔋','📡','📷','🔔','🚨','🟢','🔴',
               '▶️','⏹️','⏫','⏬','🎵','📺','💻','🖥️','🌿','☀️','🌧️','🌈',
-              '🚗','🏎️','🚲','🛵','✅','❌','⚠️','ℹ️','🔧','⚙️'].map(ico => (
+              '🚗','🏎️','🚲','🛵','✅','❌','⚠️','ℹ️','🔧','⚙️',
+              '🏡','🏢','🏗️','🏘️','🌅','🌄','🌃','🌉',
+              '🛁','🪴','🧹','🧺','🪑','🚽','🪞','🛗',
+              '🔌','🔋','🖲️','🖱️','⌨️','📱','☎️','📞',
+              '🌊','🌲','🌵','🍀','🌸','🌺','🌻','🍁',
+              '🐶','🐱','🐟','🐦','🦜','🦋','🐝','🌙',
+              '🍕','🍔','🥤','☕','🍷','🧃','🥛','🍺',
+              '⚽','🏀','🎾','🏊','🚴','🧘','🏋️','🎮',
+              '🎨','🎭','🎬','📚','📝','✏️','📌','📎',
+              '🕐','🕑','🕒','🕓','🕔','🕕','🕖','🕗',
+              '🌞','🌝','⭐','🌟','💫','✨','🌠','🌌',
+              '🔴','🟠','🟡','🟢','🔵','🟣','⚫','⚪',
+              '🟥','🟧','🟨','🟩','🟦','🟪','⬛','⬜'].map(ico => (
               <span key={ico} className="icon-opt" onClick={()=>onChange({...value, icon:ico, _showIcons:false})}>{ico}</span>
             ))}
           </div>
@@ -151,6 +163,19 @@ export default function Admin() {
       await api.patch(`/api/admin/views/${viewId}/widgets/${widgetId}`, data)
       notify('Widget aggiornato ✓')
       setEditingWidget(null)
+      loadViews()
+    } catch(e) { notify('Errore: ' + (e.response?.data?.detail || e.message)) }
+  }
+
+  const moveWidget = async (viewId, widgetId, dir, widgets) => {
+    try {
+      const sorted = [...widgets].sort((a,b) => a.order - b.order)
+      const idx = sorted.findIndex(w => w.id === widgetId)
+      const swapIdx = dir === 'up' ? idx - 1 : idx + 1
+      if (swapIdx < 0 || swapIdx >= sorted.length) return
+      const a = sorted[idx], b = sorted[swapIdx]
+      await api.patch(`/api/admin/views/${viewId}/widgets/${a.id}`, {order: b.order})
+      await api.patch(`/api/admin/views/${viewId}/widgets/${b.id}`, {order: a.order})
       loadViews()
     } catch(e) { notify('Errore: ' + (e.response?.data?.detail || e.message)) }
   }
@@ -529,6 +554,8 @@ export default function Admin() {
                           <span className="widget-label">{w.label||'—'}</span>
                           <span className={`widget-size size-${w.size}`}>{w.size}</span>
                           {w.color && <span className="widget-color-dot" style={{background:w.color}} />}
+                          <button className="btn-toggle btn-xs" onClick={()=>moveWidget(view.id,w.id,'up',view.widgets)} title="Sposta su">↑</button>
+                          <button className="btn-toggle btn-xs" onClick={()=>moveWidget(view.id,w.id,'down',view.widgets)} title="Sposta giù">↓</button>
                           <button className="btn-toggle btn-xs" onClick={()=>setEditingWidget({widgetId:w.id,label:w.label,icon:w.icon,color:w.color,bg_color:w.bg_color,size:w.size})}>✎</button>
                           <button className="btn-deny btn-xs" onClick={()=>deleteWidget(view.id,w.id)}>✕</button>
                         </>

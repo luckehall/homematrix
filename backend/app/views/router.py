@@ -99,10 +99,13 @@ async def delete_view(view_id: str, db: AsyncSession = Depends(get_db),
 @router.post("/admin/views/{view_id}/widgets", status_code=201)
 async def add_widget(view_id: str, data: WidgetCreate, db: AsyncSession = Depends(get_db),
                      admin: User = Depends(require_admin)):
+    from sqlalchemy import func
     view = await db.get(CustomView, view_id)
     if not view: raise HTTPException(404, "Vista non trovata")
+    max_order = await db.scalar(select(func.max(ViewWidget.order)).where(ViewWidget.view_id == view.id))
+    next_order = (max_order or -1) + 1
     widget = ViewWidget(view_id=view.id, entity_id=data.entity_id, label=data.label,
-                        icon=data.icon, color=data.color, bg_color=data.bg_color, size=data.size, order=data.order)
+                        icon=data.icon, color=data.color, bg_color=data.bg_color, size=data.size, order=next_order)
     db.add(widget)
     await db.commit()
     return {"id": str(widget.id), "message": "Widget aggiunto"}
