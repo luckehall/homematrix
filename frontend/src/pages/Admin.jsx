@@ -137,18 +137,22 @@ export default function Admin() {
   const addWidget = async viewId => {
     const w = newWidget[viewId] || {}
     if (!w.entity_id) return
-    await api.post(`/api/admin/views/${viewId}/widgets`, w)
-    notify('Widget aggiunto ✓')
-    setNewWidget(prev => ({...prev, [viewId]: {}}))
-    setEntitySearch(prev => ({...prev, [viewId]: ''}))
-    loadViews()
+    try {
+      await api.post(`/api/admin/views/${viewId}/widgets`, w)
+      notify('Widget aggiunto ✓')
+      setNewWidget(prev => ({...prev, [viewId]: {}}))
+      setEntitySearch(prev => ({...prev, [viewId]: ''}))
+      loadViews()
+    } catch(e) { notify('Errore: ' + (e.response?.data?.detail || e.message)) }
   }
 
   const updateWidget = async (viewId, widgetId, data) => {
-    await api.patch(`/api/admin/views/${viewId}/widgets/${widgetId}`, data)
-    notify('Widget aggiornato ✓')
-    setEditingWidget(null)
-    loadViews()
+    try {
+      await api.patch(`/api/admin/views/${viewId}/widgets/${widgetId}`, data)
+      notify('Widget aggiornato ✓')
+      setEditingWidget(null)
+      loadViews()
+    } catch(e) { notify('Errore: ' + (e.response?.data?.detail || e.message)) }
   }
 
   const deleteWidget = async (viewId, widgetId) => {
@@ -515,7 +519,7 @@ export default function Admin() {
                           <select defaultValue={w.size} onChange={e=>setEditingWidget({...editingWidget,size:e.target.value})}>
                             <option value="small">Piccolo</option><option value="medium">Medio</option><option value="large">Grande</option>
                           </select>
-                          <button className="btn-approve btn-xs" onClick={()=>updateWidget(view.id,w.id,{label:editingWidget.label,icon:editingWidget.icon,color:editingWidget.color,bg_color:editingWidget.bg_color,size:editingWidget.size})}>✓</button>
+                          <button className="btn-approve btn-xs" onClick={()=>updateWidget(view.id,w.id,{label:editingWidget.label??w.label,icon:editingWidget.icon??w.icon,color:editingWidget.color??w.color,bg_color:editingWidget.bg_color??w.bg_color,size:editingWidget.size??w.size})}>✓</button>
                           <button className="btn-toggle btn-xs" onClick={()=>setEditingWidget(null)}>✕</button>
                         </div>
                       ) : (
@@ -525,7 +529,7 @@ export default function Admin() {
                           <span className="widget-label">{w.label||'—'}</span>
                           <span className={`widget-size size-${w.size}`}>{w.size}</span>
                           {w.color && <span className="widget-color-dot" style={{background:w.color}} />}
-                          <button className="btn-toggle btn-xs" onClick={()=>setEditingWidget({widgetId:w.id,label:w.label,icon:w.icon,color:w.color,size:w.size})}>✎</button>
+                          <button className="btn-toggle btn-xs" onClick={()=>setEditingWidget({widgetId:w.id,label:w.label,icon:w.icon,color:w.color,bg_color:w.bg_color,size:w.size})}>✎</button>
                           <button className="btn-deny btn-xs" onClick={()=>deleteWidget(view.id,w.id)}>✕</button>
                         </>
                       )}

@@ -36,6 +36,7 @@ class WidgetCreate(BaseModel):
     label: Optional[str] = None
     icon: Optional[str] = None
     color: Optional[str] = None
+    bg_color: Optional[str] = None
     size: str = "medium"
     order: int = 0
 
@@ -43,6 +44,7 @@ class WidgetUpdate(BaseModel):
     label: Optional[str] = None
     icon: Optional[str] = None
     color: Optional[str] = None
+    bg_color: Optional[str] = None
     size: Optional[str] = None
     order: Optional[int] = None
 

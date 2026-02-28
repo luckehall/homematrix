@@ -19,10 +19,13 @@ function Widget({ w, onAction }) {
   const isControllable = ['switch','light','input_boolean','cover','fan','climate','media_player'].includes(domain)
 
   const accentColor = w.color || 'var(--accent)'
+  const widgetStyle = {}
+  if (w.color) widgetStyle['--widget-accent'] = w.color
+  if (w.bg_color) widgetStyle['background'] = w.bg_color
 
   return (
     <div className={`cv-widget cv-widget--${w.size} ${isOn ? 'is-on' : ''}`}
-         style={w.color ? {'--widget-accent': w.color} : {}}>
+         style={widgetStyle}>
       <div className="cv-widget-icon">{w.icon || (isBinary ? (isOn ? '🟢' : '🔴') : isSensor ? '📊' : '💡')}</div>
       <div className="cv-widget-label">{w.label}</div>
       <div className={`cv-widget-state ${isOn ? 'state-on' : ''}`}>
