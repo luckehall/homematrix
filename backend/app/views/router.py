@@ -54,7 +54,7 @@ async def list_views(db: AsyncSession = Depends(get_db),
     out = []
     for v in views:
         widgets = [{"id": str(w.id), "entity_id": w.entity_id, "label": w.label,
-                    "icon": w.icon, "color": w.color, "size": w.size, "order": w.order}
+                    "icon": w.icon, "color": w.color, "bg_color": w.bg_color, "size": w.size, "order": w.order}
                    for w in v.widgets]
         out.append({"id": str(v.id), "role_id": str(v.role_id), "host_id": str(v.host_id),
                     "title": v.title, "slug": v.slug, "order": v.order,
@@ -100,7 +100,7 @@ async def add_widget(view_id: str, data: WidgetCreate, db: AsyncSession = Depend
     view = await db.get(CustomView, view_id)
     if not view: raise HTTPException(404, "Vista non trovata")
     widget = ViewWidget(view_id=view.id, entity_id=data.entity_id, label=data.label,
-                        icon=data.icon, color=data.color, size=data.size, order=data.order)
+                        icon=data.icon, color=data.color, bg_color=data.bg_color, size=data.size, order=data.order)
     db.add(widget)
     await db.commit()
     return {"id": str(widget.id), "message": "Widget aggiunto"}
@@ -113,6 +113,7 @@ async def update_widget(view_id: str, widget_id: str, data: WidgetUpdate,
     if data.label is not None: widget.label = data.label
     if data.icon is not None: widget.icon = data.icon
     if data.color is not None: widget.color = data.color
+    if data.bg_color is not None: widget.bg_color = data.bg_color
     if data.size is not None: widget.size = data.size
     if data.order is not None: widget.order = data.order
     await db.commit()
@@ -162,7 +163,7 @@ async def get_view(slug: str, db: AsyncSession = Depends(get_db),
             except: pass
     widgets = [{"id": str(w.id), "entity_id": w.entity_id,
                 "label": w.label or states.get(w.entity_id, {}).get("attributes", {}).get("friendly_name", w.entity_id),
-                "icon": w.icon, "color": w.color, "size": w.size, "order": w.order,
+                "icon": w.icon, "color": w.color, "bg_color": w.bg_color, "size": w.size, "order": w.order,
                 "state": states.get(w.entity_id, {}).get("state", "unavailable"),
                 "attributes": states.get(w.entity_id, {}).get("attributes", {})}
                for w in view.widgets]

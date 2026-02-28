@@ -127,6 +127,7 @@ class ViewWidget(Base):
     label: Mapped[str]           = mapped_column(String(200), nullable=True)
     icon: Mapped[str]            = mapped_column(String(50), nullable=True)
     color: Mapped[str]           = mapped_column(String(50), nullable=True)
+    bg_color: Mapped[str]        = mapped_column(String(20), nullable=True)
     size: Mapped[str]            = mapped_column(String(20), default="medium")  # small, medium, large
     order: Mapped[int]           = mapped_column(Integer, default=0)
 

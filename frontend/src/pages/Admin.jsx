@@ -64,6 +64,12 @@ function WidgetAddRow({ value, onChange, entities, onLoadEntities, search, onSea
           onChange={e=>onChange({...value,color:e.target.value})} />
         <input placeholder="#colore" style={{width:'80px'}} value={value.color||''}
           onChange={e=>onChange({...value,color:e.target.value})} />
+        <input type="color" value={value.bg_color||'#1a1d24'}
+          title="Colore sfondo"
+          style={{width:'36px',height:'28px',padding:'2px',border:'1px solid var(--border)',borderRadius:'6px',cursor:'pointer'}}
+          onChange={e=>onChange({...value,bg_color:e.target.value})} />
+        <input placeholder="Sfondo" style={{width:'80px'}} value={value.bg_color||''}
+          onChange={e=>onChange({...value,bg_color:e.target.value})} />
       </div>
       <select value={value.size||'medium'} onChange={e=>onChange({...value,size:e.target.value})}>
         <option value="small">Piccolo</option><option value="medium">Medio</option><option value="large">Grande</option>
@@ -505,10 +511,11 @@ export default function Admin() {
                           <input placeholder="Label" defaultValue={w.label||''} onChange={e=>setEditingWidget({...editingWidget,label:e.target.value})} />
                           <input placeholder="Icona" defaultValue={w.icon||''} onChange={e=>setEditingWidget({...editingWidget,icon:e.target.value})} style={{width:'70px'}} />
                           <input placeholder="#colore" defaultValue={w.color||''} onChange={e=>setEditingWidget({...editingWidget,color:e.target.value})} style={{width:'100px'}} />
+                          <input placeholder="Sfondo" defaultValue={w.bg_color||''} onChange={e=>setEditingWidget({...editingWidget,bg_color:e.target.value})} style={{width:'100px'}} />
                           <select defaultValue={w.size} onChange={e=>setEditingWidget({...editingWidget,size:e.target.value})}>
                             <option value="small">Piccolo</option><option value="medium">Medio</option><option value="large">Grande</option>
                           </select>
-                          <button className="btn-approve btn-xs" onClick={()=>updateWidget(view.id,w.id,{label:editingWidget.label,icon:editingWidget.icon,color:editingWidget.color,size:editingWidget.size})}>✓</button>
+                          <button className="btn-approve btn-xs" onClick={()=>updateWidget(view.id,w.id,{label:editingWidget.label,icon:editingWidget.icon,color:editingWidget.color,bg_color:editingWidget.bg_color,size:editingWidget.size})}>✓</button>
                           <button className="btn-toggle btn-xs" onClick={()=>setEditingWidget(null)}>✕</button>
                         </div>
                       ) : (
