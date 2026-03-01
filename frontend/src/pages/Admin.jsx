@@ -654,6 +654,7 @@ export default function Admin() {
                 <option value="admin_create_user">Creazione utente</option>
                 <option value="admin_delete_user">Eliminazione utente</option>
                   <option value="admin_approve_user">Approvazione utente</option>
+                  <option value="password_change">Cambio password</option>
               </select>
               <input placeholder="Filtra per email..." value={logFilter.email}
                 onChange={e=>setLogFilter({...logFilter,email:e.target.value})} style={{minWidth:'200px'}} />

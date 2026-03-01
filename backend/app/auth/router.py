@@ -8,6 +8,7 @@ from typing import Optional
 from app.db import get_db
 from app.models import User, Session, UserStatus
 from app.activity import log_activity
+from app.activity import log_activity
 from app.auth.service import (hash_password, verify_password,
                                create_access_token, create_refresh_token,
                                decode_access_token, validate_password)
