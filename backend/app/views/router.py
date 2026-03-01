@@ -137,8 +137,13 @@ async def add_widget(view_id: str, data: WidgetCreate, db: AsyncSession = Depend
     from sqlalchemy import func
     view = await db.get(CustomView, view_id)
     if not view: raise HTTPException(404, "Vista non trovata")
-    max_order = await db.scalar(select(func.max(ViewWidget.order)).where(ViewWidget.view_id == view.id))
-    next_order = (max_order or -1) + 1
+    result_widgets = await db.execute(
+        select(ViewWidget).where(ViewWidget.view_id == view.id).order_by(ViewWidget.order))
+    existing = result_widgets.scalars().all()
+    # Normalizza order esistenti
+    for i, w in enumerate(existing):
+        w.order = i
+    next_order = len(existing)
     widget = ViewWidget(view_id=view.id, entity_id=data.entity_id, label=data.label,
                         icon=data.icon, color=data.color, bg_color=data.bg_color, size=data.size, order=next_order)
     db.add(widget)
@@ -155,7 +160,15 @@ async def update_widget(view_id: str, widget_id: str, data: WidgetUpdate,
     if data.color is not None: widget.color = data.color
     if data.bg_color is not None: widget.bg_color = data.bg_color
     if data.size is not None: widget.size = data.size
-    if data.order is not None: widget.order = data.order
+    if data.order is not None:
+        widget.order = data.order
+        await db.flush()
+        # Normalizza order per evitare duplicati
+        result = await db.execute(
+            select(ViewWidget).where(ViewWidget.view_id == widget.view_id).order_by(ViewWidget.order))
+        widgets = result.scalars().all()
+        for i, w in enumerate(widgets):
+            w.order = i
     await db.commit()
     return {"message": "Widget aggiornato"}
 
