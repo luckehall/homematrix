@@ -10,6 +10,7 @@ from app.db import get_db
 from app.models import User, CustomView, ViewWidget, HAHost, RolePermission, UserRole
 from app.auth.router import get_current_user, require_admin
 from app.hosts.router import decrypt
+from app.activity import log_activity
 
 router = APIRouter()
 
@@ -232,6 +233,12 @@ async def control_entity(slug: str, payload: dict, current: User = Depends(get_c
                 resp = await client.post(f"{host.base_url}/api/services/{domain}/{service}",
                                          headers={"Authorization": f"Bearer {decrypt(host.token)}"},
                                          json={"entity_id": entity_id, **data})
+                await log_activity(db, "widget_action", f"{service} su {entity_id}", str(current.id), current.email)
                 return {"ok": True, "status": resp.status_code}
             except: continue
     raise HTTPException(500, "Impossibile controllare l'entita")
+
+@router.post("/views/{slug}/log-access")
+async def log_view_access(slug: str, current: User = Depends(get_current_user), db: AsyncSession = Depends(get_db)):
+    await log_activity(db, "view_access", f"Accesso vista {slug}", str(current.id), current.email)
+    return {"ok": True}

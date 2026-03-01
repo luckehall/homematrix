@@ -7,6 +7,7 @@ from pydantic import BaseModel, EmailStr
 from typing import Optional
 from app.db import get_db
 from app.models import User, Session, UserStatus
+from app.activity import log_activity
 from app.auth.service import (hash_password, verify_password,
                                create_access_token, create_refresh_token,
                                decode_access_token, validate_password)
@@ -69,6 +70,7 @@ async def login(request: Request, data: LoginRequest, response: Response, db: As
     session = Session(user_id=user.id, refresh_token=refresh_token, expires_at=expires)
     db.add(session)
     await db.commit()
+    await log_activity(db, "login", f"Login da {request.client.host}", str(user.id), user.email, request.client.host)
     response.set_cookie(
         key="refresh_token", value=refresh_token,
         httponly=True, secure=True, samesite="lax",
@@ -132,6 +134,7 @@ async def refresh(response: Response, refresh_token: Optional[str] = Cookie(None
     session.refresh_token = new_refresh_token
     session.expires_at = new_expires
     await db.commit()
+    await log_activity(db, "login", f"Login da {request.client.host}", str(user.id), user.email, request.client.host)
     response.set_cookie(
         key="refresh_token", value=new_refresh_token,
         httponly=True, secure=True, samesite="lax",

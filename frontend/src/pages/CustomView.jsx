@@ -69,6 +69,10 @@ export default function CustomView() {
   }, [])
 
   useEffect(() => {
+    if (slug) api.post(`/api/views/${slug}/log-access`).catch(()=>{})
+  }, [slug])
+
+  useEffect(() => {
     load()
     const interval = setInterval(load, 3000)
     return () => clearInterval(interval)

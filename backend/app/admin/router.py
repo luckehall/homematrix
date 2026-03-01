@@ -6,6 +6,7 @@ from pydantic import BaseModel, EmailStr
 from typing import Optional
 import json
 from app.db import get_db
+from app.activity import log_activity
 from app.models import User, UserStatus, HAHost, Role, UserRole, RolePermission
 from app.auth.router import require_admin
 from app.auth.service import hash_password
@@ -143,6 +144,7 @@ async def delete_user(user_id: str, current: User = Depends(require_admin), db: 
     await db.execute(text("DELETE FROM user_roles WHERE user_id = :uid"), {"uid": user_id})
     await db.delete(user)
     await db.commit()
+    await log_activity(db, "admin_delete_user", f"Eliminato utente {user.email}", str(current.id), current.email)
     return {"message": "Utente eliminato"}
 
 @router.delete("/users/{user_id}/roles/{role_id}")

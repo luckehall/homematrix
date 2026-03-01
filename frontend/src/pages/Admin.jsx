@@ -98,6 +98,8 @@ export default function Admin() {
   const [pending, setPending] = useState([])
   const [users, setUsers] = useState([])
   const [hosts, setHosts] = useState([])
+  const [logs, setLogs] = useState([])
+  const [logFilter, setLogFilter] = useState({action:'', email:''})
   const [roles, setRoles] = useState([])
   const [views, setViews] = useState([])
   const [newView, setNewView] = useState({role_id:"", host_id:"", title:""})
@@ -207,7 +209,19 @@ export default function Admin() {
     setUserRoles(rolesMap)
   }
 
+  const loadLogs = async () => {
+    try {
+      const params = new URLSearchParams()
+      if (logFilter.action) params.append('action', logFilter.action)
+      if (logFilter.email) params.append('user_email', logFilter.email)
+      params.append('limit', '200')
+      const r = await api.get('/api/admin/logs?' + params.toString())
+      setLogs(r.data)
+    } catch(e) { notify('Errore caricamento log') }
+  }
+
   useEffect(() => { load() }, [])
+  useEffect(() => { if (tab === 'logs') loadLogs() }, [tab, logFilter.action, logFilter.email])
 
   const notify = m => { setMsg(m); setTimeout(() => setMsg(''), 3000) }
 
@@ -345,6 +359,7 @@ export default function Admin() {
           ['create', 'Nuovo Utente'],
           ['hosts', 'Host HA'],
           ['roles', 'Ruoli & Permessi'],
+          ['logs', 'Log Attività'],
           ['views', '🖥 Viste'],
         ].map(([t, label]) => (
           <div key={t} className={`admin-tab ${tab===t?'active':''}`} onClick={() => setTab(t)}>{label}</div>
@@ -615,6 +630,42 @@ export default function Admin() {
                 />
               </div>
             ))}
+          </div>
+        )}
+
+        {tab === 'logs' && (
+          <div className="logs-section">
+            <h2 className="section-title">Log Attività</h2>
+            <div className="logs-filters">
+              <select value={logFilter.action} onChange={e=>setLogFilter({...logFilter,action:e.target.value})}>
+                <option value="">Tutte le azioni</option>
+                <option value="login">Login</option>
+                <option value="view_access">Accesso vista</option>
+                <option value="widget_action">Azione widget</option>
+                <option value="admin_create_user">Creazione utente</option>
+                <option value="admin_delete_user">Eliminazione utente</option>
+              </select>
+              <input placeholder="Filtra per email..." value={logFilter.email}
+                onChange={e=>setLogFilter({...logFilter,email:e.target.value})} style={{minWidth:'200px'}} />
+              <button className="btn-toggle" onClick={loadLogs}>🔄 Aggiorna</button>
+            </div>
+            <div className="logs-table-wrap">
+              <table className="logs-table">
+                <thead><tr><th>Data</th><th>Utente</th><th>Azione</th><th>Dettaglio</th><th>IP</th></tr></thead>
+                <tbody>
+                  {logs.map(l => (
+                    <tr key={l.id}>
+                      <td className="log-date">{new Date(l.created_at).toLocaleString('it-IT')}</td>
+                      <td className="log-email">{l.user_email || '—'}</td>
+                      <td><span className={`log-action log-action--${l.action}`}>{l.action}</span></td>
+                      <td className="log-detail">{l.detail || '—'}</td>
+                      <td className="log-ip">{l.ip || '—'}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+              {logs.length === 0 && <div className="cv-empty" style={{padding:'24px',textAlign:'center'}}>Nessun log trovato</div>}
+            </div>
           </div>
         )}
 

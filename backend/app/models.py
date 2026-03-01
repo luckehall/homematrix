@@ -133,3 +133,13 @@ class ViewWidget(Base):
     order: Mapped[int]           = mapped_column(Integer, default=0)
 
     view: Mapped["CustomView"] = relationship(back_populates="widgets")
+
+class ActivityLog(Base):
+    __tablename__ = "activity_logs"
+    id: Mapped[uuid.UUID]        = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    user_id: Mapped[Optional[uuid.UUID]] = mapped_column(UUID(as_uuid=True), ForeignKey("users.id", ondelete="SET NULL"), nullable=True)
+    user_email: Mapped[str]      = mapped_column(String(200), nullable=True)
+    action: Mapped[str]          = mapped_column(String(100), nullable=False)
+    detail: Mapped[str]          = mapped_column(Text, nullable=True)
+    ip: Mapped[str]              = mapped_column(String(50), nullable=True)
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
