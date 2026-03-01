@@ -5,6 +5,7 @@ from sqlalchemy import select
 import httpx, secrets
 
 from app.db import get_db
+from app.activity import log_activity
 from app.models import User
 from app.auth.service import create_access_token
 from app.config import settings
@@ -84,4 +85,5 @@ async def google_callback(code: str, db: AsyncSession = Depends(get_db)):
 
     # Genera token e redirect
     token = create_access_token(str(user.id), user.is_admin)
+    await log_activity(db, "login", "Login via Google", str(user.id), user.email)
     return RedirectResponse(f"https://homematrix.iotzator.com/?google_token={token}")
