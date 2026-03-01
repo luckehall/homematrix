@@ -7,6 +7,7 @@ from typing import Optional
 import json
 from app.db import get_db
 from app.activity import log_activity
+from app.email import send_welcome_email
 from app.models import User, UserStatus, HAHost, Role, UserRole, RolePermission
 from app.auth.router import require_admin
 from app.auth.service import hash_password
@@ -75,6 +76,8 @@ async def approve_user(user_id: str, db: AsyncSession = Depends(get_db),
     user.approved_at = datetime.utcnow()
     await db.commit()
     log_admin_action(admin.email, "APPROVE_USER", user.email)
+    try: send_welcome_email(user.email)
+    except: pass
     return {"message": f"Utente {user.email} approvato"}
 
 @router.post("/users/{user_id}/revoke")
