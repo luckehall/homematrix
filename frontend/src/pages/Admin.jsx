@@ -133,10 +133,13 @@ export default function Admin() {
 
   const createView = async e => {
     e.preventDefault()
-    await api.post('/api/admin/views', newView)
-    notify('Vista creata ✓')
-    setNewView({role_id:"", host_id:"", title:""})
-    loadViews()
+    try {
+      const slug = newView.slug || newView.title.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '')
+      await api.post('/api/admin/views', {role_id: newView.role_id, title: newView.title, slug, order: newView.order || 0})
+      notify('Vista creata ✓')
+      setNewView({role_id:"", title:""})
+      loadViews()
+    } catch(e) { notify('Errore: ' + (e.response?.data?.detail || e.message)) }
   }
 
   const deleteView = async id => {
@@ -526,12 +529,7 @@ export default function Admin() {
                     {roles.map(r=><option key={r.id} value={r.id}>{r.name}</option>)}
                   </select>
                 </div>
-                <div className="field"><label>Host HA</label>
-                  <select value={newView.host_id} onChange={e=>setNewView({...newView,host_id:e.target.value})} required>
-                    <option value="">Seleziona host...</option>
-                    {hosts.map(h=><option key={h.id} value={h.id}>{h.name}</option>)}
-                  </select>
-                </div>
+
               </div>
               <button className="btn-primary" type="submit">+ Crea vista</button>
             </form>

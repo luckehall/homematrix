@@ -1,3 +1,4 @@
+from typing import Optional, List
 import uuid
 from datetime import datetime
 from sqlalchemy import String, Boolean, DateTime, ForeignKey, Text, Enum, Integer
@@ -110,7 +111,7 @@ class CustomView(Base):
 
     id: Mapped[uuid.UUID]        = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
     role_id: Mapped[uuid.UUID]   = mapped_column(UUID(as_uuid=True), ForeignKey("roles.id", ondelete="CASCADE"), nullable=False)
-    host_id: Mapped[uuid.UUID]   = mapped_column(UUID(as_uuid=True), ForeignKey("ha_hosts.id", ondelete="CASCADE"), nullable=False)
+    host_id: Mapped[Optional[uuid.UUID]] = mapped_column(UUID(as_uuid=True), ForeignKey("ha_hosts.id", ondelete="SET NULL"), nullable=True)
     title: Mapped[str]           = mapped_column(String(200), nullable=False)
     slug: Mapped[str]            = mapped_column(String(200), unique=True, nullable=False)
     order: Mapped[int]           = mapped_column(Integer, default=0)

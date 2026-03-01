@@ -57,8 +57,8 @@ export default function CustomView() {
 
   const load = useCallback(async () => {
     try {
-      const r = await api.get(`/api/views/${slug}`)
-      setView(r.data)
+      const r = await api.get(`/api/views/${slug}/states`)
+      setView({...r.data.view, states: r.data.states})
     } catch (e) {
       setError(e.response?.data?.detail || 'Errore caricamento vista')
     } finally { setLoading(false) }
@@ -76,8 +76,8 @@ export default function CustomView() {
 
   const handleAction = async (entityId, domain, service) => {
     try {
-      await api.post(`/api/hosts/${view.host_id}/services/${domain}/${service}`,
-        { entity_id: entityId })
+      await api.post(`/api/views/${slug}/control`,
+        { entity_id: entityId, service, domain })
     } catch {}
   }
 
@@ -106,9 +106,9 @@ export default function CustomView() {
         </div>
       </div>
       <div className="cv-grid">
-        {view.widgets.sort((a,b) => a.order - b.order).map(w => (
-          <Widget key={w.id} w={w} onAction={handleAction} />
-        ))}
+        {view.widgets.sort((a,b) => a.order - b.order).map(w => { const s = view.states?.[w.entity_id] || {}; const ww = {...w, state: s.state, attributes: s.attributes}; return (
+          <Widget key={ww.id} w={ww} onAction={handleAction} />
+        )})}
       </div>
     </div>
   )

@@ -74,7 +74,16 @@ async def login(request: Request, data: LoginRequest, response: Response, db: As
         httponly=True, secure=True, samesite="lax",
         max_age=settings.REFRESH_TOKEN_EXPIRE_DAYS * 86400
     )
-    # Controlla se 2FA è richiesto
+    # Controlla se 2FA è richiesto per il ruolo
+    from app.models import UserRole, Role
+    role_result = await db.execute(select(UserRole).where(UserRole.user_id == user.id))
+    user_role_ids = [ur.role_id for ur in role_result.scalars().all()]
+    any_role_requires_2fa = False
+    for rid in user_role_ids:
+        role = await db.get(Role, rid)
+        if role and role.require_2fa:
+            any_role_requires_2fa = True
+            break
     requires_2fa = user.totp_enabled and (user.is_admin or user.require_2fa or any_role_requires_2fa)
     if requires_2fa:
         # Emetti token temporaneo (5 minuti) per la verifica 2FA
