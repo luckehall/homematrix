@@ -307,6 +307,22 @@ export default function Admin() {
     load()
   }
 
+  const renameRole = async (roleId, name) => {
+    try {
+      await api.patch(`/api/admin/roles/${roleId}`, { name })
+      notify('Ruolo rinominato ✓')
+      load()
+    } catch(e) { notify('Errore: ' + (e.response?.data?.detail || e.message)) }
+  }
+
+  const deleteRole = async (roleId) => {
+    try {
+      await api.delete(`/api/admin/roles/${roleId}`)
+      notify('Ruolo eliminato')
+      load()
+    } catch(e) { notify('Errore: ' + (e.response?.data?.detail || e.message)) }
+  }
+
   return (
     <div className="admin-layout">
       <div className="admin-header">
@@ -622,7 +638,9 @@ export default function Admin() {
                 newPerm={newPerm[role.id] || {}}
                 onPermChange={p => setNewPerm({...newPerm, [role.id]: p})}
                 onAddPerm={() => addPerm(role.id)}
-                onDelPerm={(permId) => delPerm(role.id, permId)} />
+                onDelPerm={(permId) => delPerm(role.id, permId)}
+                onRename={(name) => renameRole(role.id, name)}
+                onDelete={() => deleteRole(role.id)} />
             ))}
           </>
         )}
@@ -631,7 +649,10 @@ export default function Admin() {
   )
 }
 
-function RoleCard({ role, hosts, newPerm, onPermChange, onAddPerm, onDelPerm, onToggle2fa }) {
+function RoleCard({ role, hosts, newPerm, onPermChange, onAddPerm, onDelPerm, onToggle2fa, onRename, onDelete }) {
+  const [editing, setEditing] = useState(false)
+  const [editName, setEditName] = useState(role.name)
+  const [confirmDel, setConfirmDel] = useState(false)
   const [haData, setHaData] = useState({ domains: [], entities: [] })
   const [loadingHa, setLoadingHa] = useState(false)
   const [domainSearch, setDomainSearch] = useState('')
@@ -675,8 +696,29 @@ function RoleCard({ role, hosts, newPerm, onPermChange, onAddPerm, onDelPerm, on
   return (
     <div className="role-card">
       <div className="role-header">
-        <div>
-          <div className="role-name">{role.name}</div>
+        <div style={{flex:1}}>
+          {editing ? (
+            <div style={{display:'flex',gap:'6px',alignItems:'center'}}>
+              <input value={editName} onChange={e=>setEditName(e.target.value)}
+                style={{flex:1,padding:'4px 8px',borderRadius:'6px',border:'1px solid var(--border)',background:'var(--surface2)',color:'var(--text)'}} />
+              <button className="btn-approve btn-xs" onClick={()=>{onRename(editName);setEditing(false)}}>✓</button>
+              <button className="btn-toggle btn-xs" onClick={()=>setEditing(false)}>✕</button>
+            </div>
+          ) : (
+            <div style={{display:'flex',alignItems:'center',gap:'8px'}}>
+              <div className="role-name">{role.name}</div>
+              <button className="btn-toggle btn-xs" onClick={()=>{setEditing(true);setEditName(role.name)}}>✎</button>
+              {confirmDel ? (
+                <span style={{display:'flex',gap:'4px',alignItems:'center'}}>
+                  <span style={{fontSize:'12px',color:'var(--muted)'}}>Conferma?</span>
+                  <button className="btn-deny btn-xs" onClick={()=>onDelete()}>✓ Sì</button>
+                  <button className="btn-toggle btn-xs" onClick={()=>setConfirmDel(false)}>✕ No</button>
+                </span>
+              ) : (
+                <button className="btn-deny btn-xs" onClick={()=>setConfirmDel(true)}>🗑</button>
+              )}
+            </div>
+          )}
           {role.description && <div className="role-desc">{role.description}</div>}
         </div>
       </div>

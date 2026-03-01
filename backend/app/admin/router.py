@@ -336,6 +336,30 @@ async def remove_role(role_id: str, user_id: str,
     await db.commit()
     return {"message": "Ruolo rimosso"}
 
+@router.patch("/roles/{role_id}")
+async def rename_role(role_id: str, data: dict, db: AsyncSession = Depends(get_db),
+                      admin: User = Depends(require_admin)):
+    from sqlalchemy import text as sql_text
+    role = await db.get(Role, role_id)
+    if not role: raise HTTPException(404, "Ruolo non trovato")
+    if "name" in data and data["name"].strip():
+        role.name = data["name"].strip()
+    await db.commit()
+    return {"message": "Ruolo aggiornato", "id": str(role.id), "name": role.name}
+
+@router.delete("/roles/{role_id}")
+async def delete_role(role_id: str, db: AsyncSession = Depends(get_db),
+                      admin: User = Depends(require_admin)):
+    from sqlalchemy import text as sql_text
+    role = await db.get(Role, role_id)
+    if not role: raise HTTPException(404, "Ruolo non trovato")
+    await db.execute(sql_text("DELETE FROM user_roles WHERE role_id = :rid"), {"rid": role_id})
+    await db.execute(sql_text("DELETE FROM role_permissions WHERE role_id = :rid"), {"rid": role_id})
+    await db.execute(sql_text("UPDATE custom_views SET role_id = NULL WHERE role_id = :rid"), {"rid": role_id})
+    await db.delete(role)
+    await db.commit()
+    return {"message": "Ruolo eliminato"}
+
 @router.patch("/roles/{role_id}/require-2fa")
 async def toggle_require_2fa(role_id: str, db: AsyncSession = Depends(get_db),
                               admin: User = Depends(require_admin)):

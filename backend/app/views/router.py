@@ -57,7 +57,7 @@ async def list_views(db: AsyncSession = Depends(get_db),
     for v in views:
         widgets = [{"id": str(w.id), "entity_id": w.entity_id, "label": w.label,
                     "icon": w.icon, "color": w.color, "bg_color": w.bg_color, "size": w.size, "order": w.order}
-                   for w in v.widgets]
+                   for w in sorted(v.widgets, key=lambda x: x.order)]
         out.append({"id": str(v.id), "role_id": str(v.role_id), "host_id": str(v.host_id),
                     "title": v.title, "slug": v.slug, "order": v.order,
                     "created_at": v.created_at, "widgets": widgets})
