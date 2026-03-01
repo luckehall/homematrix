@@ -7,7 +7,7 @@ def send_email(to_email: str, subject: str, html: str):
     try:
         msg = MIMEMultipart("alternative")
         msg["Subject"] = subject
-        msg["From"] = settings.SMTP_USER
+        msg["From"] = "HomeMatrix <seriole47@gmail.com>"
         msg["To"] = to_email
         msg.attach(MIMEText(html, "html"))
         with smtplib.SMTP(settings.SMTP_HOST, settings.SMTP_PORT) as server:
