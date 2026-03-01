@@ -28,3 +28,14 @@ async def get_logs(
     return [{"id": str(l.id), "user_email": l.user_email, "action": l.action,
              "detail": l.detail, "ip": l.ip,
              "created_at": l.created_at.isoformat()} for l in logs]
+
+@router.delete("/admin/logs")
+async def clear_logs(days: int = 30, db: AsyncSession = Depends(get_db),
+                     admin: User = Depends(require_admin)):
+    from sqlalchemy import delete
+    from datetime import datetime, timedelta
+    from app.models import ActivityLog
+    cutoff = datetime.utcnow() - timedelta(days=days)
+    result = await db.execute(delete(ActivityLog).where(ActivityLog.created_at < cutoff))
+    await db.commit()
+    return {"deleted": result.rowcount, "message": f"Eliminati log più vecchi di {days} giorni"}

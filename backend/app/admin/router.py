@@ -76,6 +76,7 @@ async def approve_user(user_id: str, db: AsyncSession = Depends(get_db),
     user.approved_at = datetime.utcnow()
     await db.commit()
     log_admin_action(admin.email, "APPROVE_USER", user.email)
+    await log_activity(db, "admin_approve_user", f"Approvato utente {user.email}", str(admin.id), admin.email)
     import asyncio
     try: await asyncio.get_event_loop().run_in_executor(None, send_welcome_email, user.email)
     except: pass

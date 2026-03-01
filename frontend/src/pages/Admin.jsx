@@ -100,6 +100,7 @@ export default function Admin() {
   const [hosts, setHosts] = useState([])
   const [logs, setLogs] = useState([])
   const [logFilter, setLogFilter] = useState({action:'', email:''})
+  const [clearDays, setClearDays] = useState(30)
   const [roles, setRoles] = useState([])
   const [views, setViews] = useState([])
   const [newView, setNewView] = useState({role_id:"", host_id:"", title:""})
@@ -207,6 +208,14 @@ export default function Admin() {
       rolesMap[user.id] = res.data
     }))
     setUserRoles(rolesMap)
+  }
+
+  const clearLogs = async () => {
+    try {
+      const r = await api.delete(`/api/admin/logs?days=${clearDays}`)
+      notify(`Eliminati ${r.data.deleted} log ✓`)
+      loadLogs()
+    } catch(e) { notify('Errore: ' + (e.response?.data?.detail || e.message)) }
   }
 
   const loadLogs = async () => {
@@ -644,10 +653,18 @@ export default function Admin() {
                 <option value="widget_action">Azione widget</option>
                 <option value="admin_create_user">Creazione utente</option>
                 <option value="admin_delete_user">Eliminazione utente</option>
+                  <option value="admin_approve_user">Approvazione utente</option>
               </select>
               <input placeholder="Filtra per email..." value={logFilter.email}
                 onChange={e=>setLogFilter({...logFilter,email:e.target.value})} style={{minWidth:'200px'}} />
               <button className="btn-toggle" onClick={loadLogs}>🔄 Aggiorna</button>
+              <div style={{display:'flex',gap:'6px',alignItems:'center',marginLeft:'auto'}}>
+                <span style={{color:'var(--muted)',fontSize:'13px'}}>Elimina log più vecchi di</span>
+                <input type="number" value={clearDays} onChange={e=>setClearDays(e.target.value)}
+                  style={{width:'60px',padding:'6px 8px',borderRadius:'6px',border:'1px solid var(--border)',background:'var(--surface2)',color:'var(--text)',textAlign:'center'}} />
+                <span style={{color:'var(--muted)',fontSize:'13px'}}>giorni</span>
+                <button className="btn-deny btn-xs" onClick={clearLogs}>🗑 Elimina</button>
+              </div>
             </div>
             <div className="logs-table-wrap">
               <table className="logs-table">
